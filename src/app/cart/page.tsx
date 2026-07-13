@@ -13,13 +13,11 @@ export default function CartPage() {
   const [isCheckout, setIsCheckout] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
 
-  const { items, removeItem, updateQuantity, totalPrice, clearCart } = useCartStore(state => ({
-    items: state.items,
-    removeItem: state.removeItem,
-    updateQuantity: state.updateQuantity,
-    totalPrice: state.totalPrice(),
-    clearCart: state.clearCart
-  }))
+  const items = useCartStore(state => state.items)
+  const removeItem = useCartStore(state => state.removeItem)
+  const updateQuantity = useCartStore(state => state.updateQuantity)
+  const totalPrice = useCartStore(state => state.totalPrice())
+  const clearCart = useCartStore(state => state.clearCart)
 
   useEffect(() => {
     setMounted(true)
