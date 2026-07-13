@@ -73,7 +73,7 @@ export function SearchSection() {
           Smart search powered by <span className="text-primary">AI</span>
         </h1>
         <p className="text-xl text-muted-foreground">
-          Describe what you're looking for in your own words. We'll find it in our store or across the web.
+          Describe what you&apos;re looking for in your own words. We&apos;ll find it in our store or across the web.
         </p>
         
         <form onSubmit={handleSearch} className="relative w-full flex shadow-lg rounded-lg overflow-hidden border">

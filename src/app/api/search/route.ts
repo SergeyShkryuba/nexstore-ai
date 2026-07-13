@@ -109,6 +109,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ local, global })
   } catch (error) {
+    console.error('Search API error:', error)
     return NextResponse.json({ error: 'Failed to process search' }, { status: 500 })
   }
 }
