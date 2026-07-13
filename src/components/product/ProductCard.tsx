@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { useCartStore } from '@/store/useCartStore'
 import { ShoppingCart } from 'lucide-react'
 import { toast } from 'sonner'
+import { WishlistButton } from './WishlistButton'
 
 interface ProductCardProps {
   product: {
@@ -43,6 +44,9 @@ export function ProductCard({ product }: ProductCardProps) {
             fill
             className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
           />
+          <div className="absolute top-2 right-2 z-10">
+            <WishlistButton productId={product.id} />
+          </div>
         </div>
         <CardContent className="p-4">
           <h3 className="font-semibold text-lg line-clamp-1">{product.title}</h3>

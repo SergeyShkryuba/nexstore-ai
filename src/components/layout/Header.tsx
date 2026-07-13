@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Menu, User, X, LogOut } from 'lucide-react'
+import { Menu, User, X, LogOut, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CartButton } from './CartButton'
 import { ThemeToggle } from '../theme/ThemeToggle'
@@ -65,9 +65,16 @@ export function Header() {
             
             {user ? (
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium hidden md:inline-block px-2">
-                  Hi, {user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0]}
-                </span>
+                <Link href="/wishlist">
+                  <Button variant="ghost" size="icon" title="Wishlist">
+                    <Heart className="h-5 w-5" />
+                  </Button>
+                </Link>
+                <Link href="/profile">
+                  <Button variant="ghost" size="icon" title="Profile">
+                    <User className="h-5 w-5" />
+                  </Button>
+                </Link>
                 <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign Out">
                   <LogOut className="h-5 w-5" />
                 </Button>
