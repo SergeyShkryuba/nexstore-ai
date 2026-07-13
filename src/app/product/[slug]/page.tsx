@@ -104,7 +104,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
         </div>
         
         <div>
-          <h2 className="text-2xl font-bold mb-4">Recent Reviews</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold">Recent Reviews</h2>
+            <span className="text-xs bg-muted px-2 py-1 rounded-full text-muted-foreground">Demo Data</span>
+          </div>
           <div className="space-y-4">
             {[1, 2].map((i) => (
               <Card key={i}>
