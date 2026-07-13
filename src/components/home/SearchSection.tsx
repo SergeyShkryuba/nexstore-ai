@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { Search, Loader2, ExternalLink } from 'lucide-react'
@@ -103,11 +103,14 @@ export function SearchSection() {
                       </div>
                       <div className="flex items-center justify-between mt-2">
                         <span className="font-bold text-lg">${extItem.price.toFixed(2)}</span>
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={extItem.url} target="_blank" rel="noreferrer">
-                            View Deal <ExternalLink className="ml-2 h-4 w-4" />
-                          </Link>
-                        </Button>
+                        <Link 
+                          href={extItem.url} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className={buttonVariants({ variant: "outline", size: "sm" })}
+                        >
+                          View Deal <ExternalLink className="ml-2 h-4 w-4" />
+                        </Link>
                       </div>
                     </div>
                   </CardContent>
