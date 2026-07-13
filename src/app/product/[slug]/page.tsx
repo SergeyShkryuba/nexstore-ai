@@ -137,11 +137,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
         </div>
       </div>
 
-      {relatedProducts.length > 0 && (
+      {(relatedProducts || []).length > 0 && (
         <div>
           <h2 className="text-2xl font-bold mb-6">Related Products</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-            {relatedProducts.map(p => (
+            {(relatedProducts || []).map(p => (
               <ProductCard key={p.id} product={p} />
             ))}
           </div>

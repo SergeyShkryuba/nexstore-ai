@@ -28,7 +28,8 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     query.eq('category_id', category.id)
   }
 
-  const { data: products } = await query
+  const { data } = await query
+  const products = data || []
 
   return (
     <div className="container mx-auto px-4 py-8">
