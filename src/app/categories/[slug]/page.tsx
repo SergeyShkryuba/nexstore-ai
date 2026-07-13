@@ -1,6 +1,6 @@
-import { MOCK_CATEGORIES, MOCK_PRODUCTS } from '@/shared/lib/mockData'
 import { ProductCard } from '@/components/product/ProductCard'
 import { notFound } from 'next/navigation'
+import { createClient } from '@/utils/supabase/server'
 
 interface CategoryPageProps {
   params: Promise<{
@@ -10,17 +10,25 @@ interface CategoryPageProps {
 
 export default async function CategoryPage({ params }: CategoryPageProps) {
   const { slug } = await params
+  const supabase = await createClient()
   
   const isAll = slug === 'all'
-  const category = MOCK_CATEGORIES.find(c => c.slug === slug)
-  
-  if (!category && !isAll) {
-    notFound()
+  let category = null
+
+  if (!isAll) {
+    const { data } = await supabase.from('categories').select('*').eq('slug', slug).single()
+    category = data
+    if (!category) {
+      notFound()
+    }
   }
 
-  const products = isAll 
-    ? MOCK_PRODUCTS 
-    : MOCK_PRODUCTS.filter(p => p.category_id === category?.id)
+  const query = supabase.from('products').select('*')
+  if (!isAll && category) {
+    query.eq('category_id', category.id)
+  }
+
+  const { data: products } = await query
 
   return (
     <div className="container mx-auto px-4 py-8">

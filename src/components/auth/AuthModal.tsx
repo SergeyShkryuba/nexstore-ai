@@ -7,12 +7,14 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { useAuthStore } from '@/store/useAuthStore'
-import { toast } from 'sonner'
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { createClient } from '@/utils/supabase/client'
 
 interface AuthModalProps {
   isOpen: boolean
@@ -20,78 +22,149 @@ interface AuthModalProps {
 }
 
 export function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const [isLogin, setIsLogin] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  
-  const login = useAuthStore(state => state.login)
+  const [fullName, setFullName] = useState('')
+  const supabase = createClient()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     
-    // Mock network request
-    setTimeout(() => {
-      login(email)
-      toast.success(isLogin ? 'Successfully logged in!' : 'Account created successfully!')
-      setIsLoading(false)
-      onClose()
-    }, 1000)
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    setIsLoading(false)
+
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+
+    toast.success('Successfully signed in')
+    onClose()
+    window.location.reload() // Force reload to update server components with session
+  }
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+        },
+      },
+    })
+
+    setIsLoading(false)
+
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+
+    toast.success('Successfully signed up! Please check your email to verify.')
+    onClose()
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>{isLogin ? 'Sign In' : 'Create Account'}</DialogTitle>
+          <DialogTitle>Authentication</DialogTitle>
           <DialogDescription>
-            {isLogin 
-              ? 'Enter your email and password to access your account.' 
-              : 'Fill in your details below to create a new account.'}
+            Sign in to your account or create a new one to start shopping.
           </DialogDescription>
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Email</label>
-            <Input 
-              type="email" 
-              placeholder="name@example.com" 
-              required 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Password</label>
-            <Input 
-              type="password" 
-              placeholder="••••••••" 
-              required 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
+
+        <Tabs defaultValue="signin" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="signin">Sign In</TabsTrigger>
+            <TabsTrigger value="signup">Sign Up</TabsTrigger>
+          </TabsList>
           
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isLogin ? 'Sign In' : 'Sign Up'}
-          </Button>
-        </form>
-        
-        <div className="text-center text-sm">
-          <span className="text-muted-foreground">
-            {isLogin ? "Don't have an account? " : "Already have an account? "}
-          </span>
-          <button 
-            type="button"
-            className="font-medium text-primary hover:underline"
-            onClick={() => setIsLogin(!isLogin)}
-          >
-            {isLogin ? 'Sign up' : 'Sign in'}
-          </button>
-        </div>
+          <TabsContent value="signin">
+            <form onSubmit={handleSignIn} className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="signin-email">Email</Label>
+                <Input 
+                  id="signin-email" 
+                  type="email" 
+                  placeholder="m@example.com" 
+                  required 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signin-password">Password</Label>
+                <Input 
+                  id="signin-password" 
+                  type="password" 
+                  required 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Sign In
+              </Button>
+            </form>
+          </TabsContent>
+          
+          <TabsContent value="signup">
+            <form onSubmit={handleSignUp} className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="signup-name">Full Name</Label>
+                <Input 
+                  id="signup-name" 
+                  placeholder="John Doe" 
+                  required 
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signup-email">Email</Label>
+                <Input 
+                  id="signup-email" 
+                  type="email" 
+                  placeholder="m@example.com" 
+                  required 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signup-password">Password</Label>
+                <Input 
+                  id="signup-password" 
+                  type="password" 
+                  required 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Create Account
+              </Button>
+            </form>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   )

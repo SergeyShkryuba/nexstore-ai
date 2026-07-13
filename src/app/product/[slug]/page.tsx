@@ -1,10 +1,10 @@
-import { MOCK_PRODUCTS } from '@/shared/lib/mockData'
 import { notFound } from 'next/navigation'
 import { AddToCartButton } from '@/components/product/AddToCartButton'
 import { ProductCard } from '@/components/product/ProductCard'
 import { Star, Shield, Truck, RotateCcw } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import Image from 'next/image'
+import { createClient } from '@/utils/supabase/server'
 
 interface ProductPageProps {
   params: Promise<{
@@ -14,13 +14,20 @@ interface ProductPageProps {
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params
-  const product = MOCK_PRODUCTS.find(p => p.slug === slug)
+  const supabase = await createClient()
+
+  const { data: product } = await supabase.from('products').select('*').eq('slug', slug).single()
   
   if (!product) {
     notFound()
   }
 
-  const relatedProducts = MOCK_PRODUCTS.filter(p => p.category_id === product.category_id && p.id !== product.id)
+  const { data: relatedProducts } = await supabase
+    .from('products')
+    .select('*')
+    .eq('category_id', product.category_id)
+    .neq('id', product.id)
+    .limit(4)
 
   return (
     <div className="container mx-auto px-4 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">

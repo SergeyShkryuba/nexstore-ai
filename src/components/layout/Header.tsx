@@ -1,19 +1,40 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Menu, User, X, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CartButton } from './CartButton'
 import { ThemeToggle } from '../theme/ThemeToggle'
 import { AuthModal } from '../auth/AuthModal'
-import { useAuthStore } from '@/store/useAuthStore'
+import { createClient } from '@/utils/supabase/client'
+import { User as SupabaseUser } from '@supabase/supabase-js'
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   
-  const { user, isAuthenticated, logout } = useAuthStore()
+  const [user, setUser] = useState<SupabaseUser | null>(null)
+  const supabase = createClient()
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user)
+    })
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    window.location.reload()
+  }
 
   const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen)
   const closeMenu = () => setIsMobileMenuOpen(false)
@@ -42,12 +63,12 @@ export function Header() {
           <nav className="flex items-center space-x-2">
             <ThemeToggle />
             
-            {isAuthenticated ? (
+            {user ? (
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium hidden md:inline-block px-2">
-                  Hi, {user?.name}
+                  Hi, {user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0]}
                 </span>
-                <Button variant="ghost" size="icon" onClick={logout} title="Sign Out">
+                <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign Out">
                   <LogOut className="h-5 w-5" />
                 </Button>
               </div>
