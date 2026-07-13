@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useCartStore } from '@/store/useCartStore'
@@ -36,10 +37,10 @@ export function ProductCard({ product }: ProductCardProps) {
     <Card className="overflow-hidden flex flex-col h-full group">
       <Link href={`/product/${product.slug}`} className="block flex-1">
         <div className="aspect-square bg-muted relative overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img 
+          <Image 
             src={product.image_urls[0]} 
             alt={product.title}
+            fill
             className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
           />
         </div>

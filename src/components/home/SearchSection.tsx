@@ -7,10 +7,32 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Search, Loader2, ExternalLink } from 'lucide-react'
 import { ProductCard } from '@/components/product/ProductCard'
 import Link from 'next/link'
+import Image from 'next/image'
+import { toast } from 'sonner'
+
+export type LocalProduct = {
+  id: string
+  category_id: string
+  title: string
+  slug: string
+  description: string
+  price: number
+  image_urls: string[]
+  attributes?: Record<string, string>
+}
+
+export type GlobalProduct = {
+  id: string
+  title: string
+  price: number
+  source: string
+  url: string
+  image_url: string
+}
 
 type SearchResult = {
-  local: any[]
-  global: any[]
+  local: LocalProduct[]
+  global: GlobalProduct[]
 }
 
 export function SearchSection() {
@@ -31,10 +53,14 @@ export function SearchSection() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query }),
       })
+      
+      if (!res.ok) throw new Error('Failed to fetch')
+      
       const data = await res.json()
       setResults(data)
     } catch (error) {
       console.error("Search failed", error)
+      toast.error('Search failed', { description: 'Please try again later.' })
     } finally {
       setIsLoading(false)
     }
@@ -92,9 +118,13 @@ export function SearchSection() {
               {results.global.map((extItem) => (
                 <Card key={extItem.id} className="overflow-hidden hover:shadow-md transition-shadow">
                   <CardContent className="p-0 flex h-32">
-                    <div className="w-32 h-full bg-muted flex-shrink-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={extItem.image_url} alt={extItem.title} className="w-full h-full object-cover" />
+                    <div className="w-32 h-full bg-muted flex-shrink-0 relative">
+                      <Image 
+                        src={extItem.image_url} 
+                        alt={extItem.title} 
+                        fill
+                        className="object-cover" 
+                      />
                     </div>
                     <div className="p-4 flex flex-col flex-1 justify-between">
                       <div>

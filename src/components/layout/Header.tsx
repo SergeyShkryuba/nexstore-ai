@@ -2,13 +2,18 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Menu, User, X } from 'lucide-react'
+import { Menu, User, X, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CartButton } from './CartButton'
 import { ThemeToggle } from '../theme/ThemeToggle'
+import { AuthModal } from '../auth/AuthModal'
+import { useAuthStore } from '@/store/useAuthStore'
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  
+  const { user, isAuthenticated, logout } = useAuthStore()
 
   const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen)
   const closeMenu = () => setIsMobileMenuOpen(false)
@@ -36,10 +41,22 @@ export function Header() {
         <div className="flex flex-1 items-center justify-end space-x-4">
           <nav className="flex items-center space-x-2">
             <ThemeToggle />
-            <Button variant="ghost" size="icon">
-              <User className="h-5 w-5" />
-              <span className="sr-only">Profile</span>
-            </Button>
+            
+            {isAuthenticated ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium hidden md:inline-block px-2">
+                  Hi, {user?.name}
+                </span>
+                <Button variant="ghost" size="icon" onClick={logout} title="Sign Out">
+                  <LogOut className="h-5 w-5" />
+                </Button>
+              </div>
+            ) : (
+              <Button variant="ghost" size="icon" onClick={() => setIsAuthModalOpen(true)} title="Sign In">
+                <User className="h-5 w-5" />
+              </Button>
+            )}
+            
             <CartButton />
           </nav>
         </div>
@@ -55,6 +72,8 @@ export function Header() {
           </nav>
         </div>
       )}
+      
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
     </header>
   )
 }

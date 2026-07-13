@@ -5,6 +5,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Trash2, Plus, Minus, CheckCircle2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -107,10 +108,16 @@ export default function CartPage() {
                 <Card key={item.id}>
                   <CardContent className="p-4 flex items-center gap-4">
                     {item.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={item.image_url} alt={item.title} className="w-20 h-20 object-cover rounded-md" />
+                      <div className="w-20 h-20 relative flex-shrink-0">
+                        <Image 
+                          src={item.image_url} 
+                          alt={item.title} 
+                          fill
+                          className="object-cover rounded-md" 
+                        />
+                      </div>
                     ) : (
-                      <div className="w-20 h-20 bg-muted rounded-md" />
+                      <div className="w-20 h-20 bg-muted rounded-md flex-shrink-0" />
                     )}
                     <div className="flex-1">
                       <h3 className="font-semibold">{item.title}</h3>
