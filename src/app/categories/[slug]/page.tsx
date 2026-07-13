@@ -2,10 +2,36 @@ import { ProductCard } from '@/components/product/ProductCard'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 
+import type { Metadata } from 'next'
+
 interface CategoryPageProps {
   params: Promise<{
     slug: string
   }>
+}
+
+export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
+  const { slug } = await params
+  const supabase = await createClient()
+  const { data: category } = await supabase.from('categories').select('*').eq('slug', slug).single()
+
+  if (!category) return { title: 'Category Not Found' }
+
+  return {
+    title: category.name,
+    description: category.description,
+    openGraph: {
+      title: category.name,
+      description: category.description || undefined,
+      images: category.image_url ? [{ url: category.image_url }] : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: category.name,
+      description: category.description || undefined,
+      images: category.image_url ? [category.image_url] : [],
+    }
+  }
 }
 
 export default async function CategoryPage({ params }: CategoryPageProps) {

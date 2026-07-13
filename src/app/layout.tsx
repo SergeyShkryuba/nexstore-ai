@@ -16,8 +16,24 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NexStore AI",
-  description: "E-commerce platform powered by AI",
+  title: {
+    template: "%s | NexStore AI",
+    default: "NexStore AI - Next Generation E-commerce",
+  },
+  description: "Experience the future of shopping with our AI-powered e-commerce platform.",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+    title: "NexStore AI - Next Generation E-commerce",
+    description: "Experience the future of shopping with our AI-powered e-commerce platform.",
+    siteName: "NexStore AI",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "NexStore AI",
+    description: "Experience the future of shopping with our AI-powered e-commerce platform.",
+  },
 };
 
 export default function RootLayout({

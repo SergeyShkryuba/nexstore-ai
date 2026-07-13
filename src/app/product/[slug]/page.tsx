@@ -1,15 +1,42 @@
 import { notFound } from 'next/navigation'
 import { AddToCartButton } from '@/components/product/AddToCartButton'
 import { ProductCard } from '@/components/product/ProductCard'
+import { ReviewSection } from '@/components/product/ReviewSection'
 import { Star, Shield, Truck, RotateCcw } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import Image from 'next/image'
 import { createClient } from '@/utils/supabase/server'
 
+import type { Metadata } from 'next'
+
 interface ProductPageProps {
   params: Promise<{
     slug: string
   }>
+}
+
+export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
+  const { slug } = await params
+  const supabase = await createClient()
+  const { data: product } = await supabase.from('products').select('*').eq('slug', slug).single()
+
+  if (!product) return { title: 'Product Not Found' }
+
+  return {
+    title: product.title,
+    description: product.description,
+    openGraph: {
+      title: product.title,
+      description: product.description || undefined,
+      images: product.image_urls?.[0] ? [{ url: product.image_urls[0] }] : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.title,
+      description: product.description || undefined,
+      images: product.image_urls?.[0] ? [product.image_urls[0]] : [],
+    }
+  }
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
@@ -28,6 +55,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
     .eq('category_id', product.category_id)
     .neq('id', product.id)
     .limit(4)
+
+  // Fetch reviews with user profiles
+  const { data: reviews } = await supabase
+    .from('reviews')
+    .select('*, profiles(full_name, avatar_url)')
+    .eq('product_id', product.id)
+    .order('created_at', { ascending: false })
 
   return (
     <div className="container mx-auto px-4 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -109,36 +143,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </CardContent>
           </Card>
         </div>
-        
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold">Recent Reviews</h2>
-            <span className="text-xs bg-muted px-2 py-1 rounded-full text-muted-foreground">Demo Data</span>
-          </div>
-          <div className="space-y-4">
-            {[1, 2].map((i) => (
-              <Card key={i}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold">Customer {i}</span>
-                    <div className="flex text-yellow-500">
-                      <Star className="w-4 h-4 fill-current" />
-                      <Star className="w-4 h-4 fill-current" />
-                      <Star className="w-4 h-4 fill-current" />
-                      <Star className="w-4 h-4 fill-current" />
-                      <Star className="w-4 h-4 fill-current" />
-                    </div>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Excellent product, exactly as described. Highly recommended!</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
       </div>
 
-      {(relatedProducts || []).length > 0 && (
-        <div>
+      {/* Real Review Section */}
+      <ReviewSection productId={product.id} initialReviews={reviews || []} />
+
+      {/* Related Products Section */}
+      {relatedProducts && relatedProducts.length > 0 && (
+        <div className="mb-16">
           <h2 className="text-2xl font-bold mb-6">Related Products</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
             {(relatedProducts || []).map(p => (

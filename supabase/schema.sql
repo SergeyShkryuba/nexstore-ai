@@ -101,3 +101,19 @@ alter table wishlist enable row level security;
 create policy "Users can view their own wishlist" on wishlist for select using (auth.uid() = user_id);
 create policy "Users can insert into their own wishlist" on wishlist for insert with check (auth.uid() = user_id);
 create policy "Users can delete from their own wishlist" on wishlist for delete using (auth.uid() = user_id);
+
+-- Таблица отзывов
+create table reviews (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid references products(id) on delete cascade not null,
+  user_id uuid references auth.users on delete cascade not null,
+  rating integer not null check (rating >= 1 and rating <= 5),
+  comment text,
+  created_at timestamptz default now()
+);
+
+alter table reviews enable row level security;
+-- Отзывы видят все
+create policy "Reviews are viewable by everyone" on reviews for select using (true);
+-- Оставлять отзывы могут только авторизованные
+create policy "Users can insert their own reviews" on reviews for insert with check (auth.uid() = user_id);
