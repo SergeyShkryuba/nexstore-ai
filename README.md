@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NexStore AI 🛍️🤖
 
-## Getting Started
+NexStore AI is a modern, full-stack e-commerce platform concept built for a portfolio. It demonstrates advanced integration of an AI-powered search system with a sleek, responsive UI.
 
-First, run the development server:
+## 🚀 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Hybrid AI Search (Demo):** Users can describe what they are looking for in natural language (e.g., "A red sweater for a Christmas party"). The system parses the intent, finds relevant items in the local database, and acts as an aggregator to fetch deals from external platforms (like Amazon/eBay).
+- **Modern Tech Stack:** Built with Next.js 16 (App Router), React 19, and Tailwind CSS v4 for maximum performance and DX.
+- **Beautiful UI:** Uses `shadcn/ui` for accessible, premium-feeling components. Includes Dark Mode, smooth animations, and a responsive layout.
+- **State Management:** Fast and simple global state for the shopping cart using `Zustand` and `LocalStorage`.
+- **Database:** Schema ready for `Supabase` (PostgreSQL) with `orders` and `order_items` tables structure.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠 Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Framework:** Next.js 16 (App Router)
+- **Styling:** Tailwind CSS v4, shadcn/ui
+- **State:** Zustand
+- **Database:** Supabase (Schema prepared)
+- **Icons:** lucide-react
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📝 Note to Reviewers / Recruiters
 
-## Learn More
+This project is a **portfolio showcase**. To ensure it runs smoothly without requiring API keys for third-party services:
+- **Search is mocked:** The AI parsing and external API fetching in `/api/search/route.ts` are simulated using timeout delays and keyword-matching. The code for integrating real Gemini/Tavily APIs is included in the file but commented out.
+- **Mock Data:** The catalog currently runs on a localized set of mock products (`MOCK_PRODUCTS`) for instant loading.
+- **Reviews:** Product reviews are visually mocked to demonstrate layout.
 
-To learn more about Next.js, take a look at the following resources:
+## 🏃‍♂️ Getting Started
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/SergeyShkryuba/nexstore-ai.git
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📄 License
+MIT License

@@ -5,6 +5,7 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useCartStore } from '@/store/useCartStore'
 import { ShoppingCart } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface ProductCardProps {
   product: {
@@ -18,6 +19,18 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem)
+
+  const handleAdd = (e: React.MouseEvent) => {
+    e.preventDefault()
+    addItem({
+      id: product.id,
+      title: product.title,
+      price: product.price,
+      quantity: 1,
+      image_url: product.image_urls[0]
+    })
+    toast.success('Added to cart', { description: product.title })
+  }
 
   return (
     <Card className="overflow-hidden flex flex-col h-full group">
@@ -38,13 +51,7 @@ export function ProductCard({ product }: ProductCardProps) {
       <CardFooter className="p-4 pt-0 mt-auto">
         <Button 
           className="w-full" 
-          onClick={() => addItem({
-            id: product.id,
-            title: product.title,
-            price: product.price,
-            quantity: 1,
-            image_url: product.image_urls[0]
-          })}
+          onClick={handleAdd}
         >
           <ShoppingCart className="w-4 h-4 mr-2" />
           Add to Cart
