@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Package, ShoppingCart, Users, DollarSign } from 'lucide-react'
+import { Package, ShoppingCart, Users, Euro } from 'lucide-react'
+import { formatPrice } from '@/lib/format'
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient()
@@ -26,7 +27,7 @@ export default async function AdminDashboardPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
         <p className="text-muted-foreground mt-2">
-          Welcome to the admin panel. Here's what's happening with your store today.
+          Welcome to the admin panel. Here&apos;s what&apos;s happening with your store today.
         </p>
       </div>
 
@@ -34,10 +35,10 @@ export default async function AdminDashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
-            <DollarSign className="w-4 h-4 text-muted-foreground" />
+            <Euro className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalRevenue.toFixed(2)}</div>
+            <div className="text-2xl font-bold">{formatPrice(totalRevenue)}</div>
           </CardContent>
         </Card>
         

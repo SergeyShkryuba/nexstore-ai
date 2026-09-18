@@ -5,9 +5,18 @@ import { ReviewSection } from '@/components/product/ReviewSection'
 import { Star, Shield, Truck, RotateCcw } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import Image from 'next/image'
-import { createClient } from '@/utils/supabase/server'
+import { createPublicClient } from '@/utils/supabase/public'
+import { averageRating, formatPrice } from '@/lib/format'
 
 import type { Metadata } from 'next'
+
+export const revalidate = 300
+
+export async function generateStaticParams() {
+  const supabase = createPublicClient()
+  const { data } = await supabase.from('products').select('slug')
+  return (data ?? []).map((p) => ({ slug: p.slug as string }))
+}
 
 interface ProductPageProps {
   params: Promise<{
@@ -17,7 +26,7 @@ interface ProductPageProps {
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { slug } = await params
-  const supabase = await createClient()
+  const supabase = createPublicClient()
   const { data: product } = await supabase.from('products').select('*').eq('slug', slug).single()
 
   if (!product) return { title: 'Product Not Found' }
@@ -41,7 +50,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params
-  const supabase = await createClient()
+  const supabase = createPublicClient()
 
   const { data: product } = await supabase.from('products').select('*').eq('slug', slug).single()
   
@@ -63,16 +72,24 @@ export default async function ProductPage({ params }: ProductPageProps) {
     .eq('product_id', product.id)
     .order('created_at', { ascending: false })
 
+  // Rating is derived from the reviews actually in the database. The page used
+  // to hard-code 4/5 stars and "(24 reviews)" above a review list that could be
+  // empty.
+  const reviewList = reviews ?? []
+  const rating = averageRating(reviewList.map((r) => r.rating as number))
+
   return (
     <div className="container mx-auto px-4 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16">
         
         <div className="aspect-square bg-muted rounded-2xl overflow-hidden border relative">
           {product.image_urls?.[0] ? (
-            <Image 
-              src={product.image_urls[0]} 
-              alt={product.title} 
+            <Image
+              src={product.image_urls[0]}
+              alt={product.title}
               fill
+              priority
+              sizes="(max-width: 768px) 100vw, 50vw"
               className="object-cover"
             />
           ) : (
@@ -86,20 +103,40 @@ export default async function ProductPage({ params }: ProductPageProps) {
           <div>
             <h1 className="text-4xl font-extrabold tracking-tight mb-2">{product.title}</h1>
             <div className="flex items-center space-x-4">
-              <div className="flex items-center text-yellow-500">
-                <Star className="w-5 h-5 fill-current" />
-                <Star className="w-5 h-5 fill-current" />
-                <Star className="w-5 h-5 fill-current" />
-                <Star className="w-5 h-5 fill-current" />
-                <Star className="w-5 h-5 text-muted" />
-              </div>
-              <span className="text-muted-foreground">(24 reviews)</span>
+              {rating !== null ? (
+                <>
+                  <div
+                    className="flex items-center text-yellow-500"
+                    aria-label={`Rated ${rating} out of 5`}
+                  >
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        aria-hidden="true"
+                        className={`w-5 h-5 ${i < Math.round(rating) ? 'fill-current' : 'text-muted'}`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-muted-foreground">
+                    {rating} ({reviewList.length}{' '}
+                    {reviewList.length === 1 ? 'review' : 'reviews'})
+                  </span>
+                </>
+              ) : (
+                <span className="text-muted-foreground">No reviews yet</span>
+              )}
             </div>
           </div>
 
           <div className="text-3xl font-bold text-primary">
-            ${product.price.toFixed(2)}
+            {formatPrice(product.price)}
           </div>
+
+          <p className="text-sm text-muted-foreground">
+            {product.inventory_count > 0
+              ? `${product.inventory_count} in stock`
+              : 'Currently out of stock'}
+          </p>
           
           <p className="text-lg text-muted-foreground leading-relaxed">
             {product.description}
@@ -121,12 +158,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
           </div>
 
           <div className="pt-4">
-            <AddToCartButton product={product} />
+            <AddToCartButton product={product} disabled={product.inventory_count <= 0} />
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16">
+      <div className="mb-16 max-w-2xl">
         <div>
           <h2 className="text-2xl font-bold mb-4">Specifications</h2>
           <Card>
@@ -146,7 +183,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       </div>
 
       {/* Real Review Section */}
-      <ReviewSection productId={product.id} initialReviews={reviews || []} />
+      <ReviewSection productId={product.id} initialReviews={reviewList} />
 
       {/* Related Products Section */}
       {relatedProducts && relatedProducts.length > 0 && (

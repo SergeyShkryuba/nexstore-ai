@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Menu, User, X, LogOut, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CartButton } from './CartButton'
@@ -15,25 +16,34 @@ export function Header() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   
   const [user, setUser] = useState<SupabaseUser | null>(null)
+  const router = useRouter()
+  // Module-level singleton, so this reference is stable across renders.
   const supabase = createClient()
 
   useEffect(() => {
-    // Get initial session
+    let active = true
+
     supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user)
+      if (active) setUser(user)
     })
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
     })
 
-    return () => subscription.unsubscribe()
-  }, [])
+    return () => {
+      active = false
+      subscription.unsubscribe()
+    }
+  }, [supabase])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
-    window.location.reload()
+    // Re-render server components with the cleared session instead of a full
+    // page reload, which threw away client state for no reason.
+    router.refresh()
   }
 
   const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen)

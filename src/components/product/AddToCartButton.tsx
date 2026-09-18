@@ -9,10 +9,16 @@ interface Product {
   id: string
   title: string
   price: number
-  image_urls?: string[]
+  image_urls?: string[] | null
 }
 
-export function AddToCartButton({ product }: { product: Product }) {
+export function AddToCartButton({
+  product,
+  disabled = false,
+}: {
+  product: Product
+  disabled?: boolean
+}) {
   const addItem = useCartStore(state => state.addItem)
 
   const handleAdd = () => {
@@ -27,13 +33,9 @@ export function AddToCartButton({ product }: { product: Product }) {
   }
 
   return (
-    <Button 
-      size="lg" 
-      className="w-full sm:w-auto"
-      onClick={handleAdd}
-    >
-      <ShoppingCart className="mr-2 h-5 w-5" />
-      Add to Cart
+    <Button size="lg" className="w-full sm:w-auto" onClick={handleAdd} disabled={disabled}>
+      <ShoppingCart className="mr-2 h-5 w-5" aria-hidden="true" />
+      {disabled ? 'Out of stock' : 'Add to Cart'}
     </Button>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { CheckCircle2 } from 'lucide-react'
@@ -10,17 +10,13 @@ import { useCartStore } from '@/store/useCartStore'
 function SuccessContent() {
   const searchParams = useSearchParams()
   const sessionId = searchParams.get('session_id')
-  const [mounted, setMounted] = useState(false)
-  const clearCart = useCartStore(state => state.clearCart)
+  const clearCart = useCartStore((state) => state.clearCart)
 
+  // The only job of this effect is the side effect; no `mounted` flag needed,
+  // because nothing below depends on persisted cart contents.
   useEffect(() => {
-    setMounted(true)
-    if (sessionId) {
-      clearCart()
-    }
+    if (sessionId) clearCart()
   }, [sessionId, clearCart])
-
-  if (!mounted) return null
 
   return (
     <div className="container mx-auto px-4 py-16 flex flex-col items-center justify-center text-center animate-in zoom-in duration-500">

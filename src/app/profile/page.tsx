@@ -2,6 +2,14 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Package, User } from 'lucide-react'
+import { formatPrice } from '@/lib/format'
+
+type OrderRow = {
+  id: string
+  created_at: string
+  total_amount: number | string
+  status: string
+}
 
 export default async function ProfilePage() {
   const supabase = await createClient()
@@ -67,11 +75,11 @@ export default async function ProfilePage() {
               {!orders || orders.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Package className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                  <p>You haven't placed any orders yet.</p>
+                  <p>You haven&apos;t placed any orders yet.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {orders.map((order: any) => (
+                  {(orders as OrderRow[]).map((order) => (
                     <div key={order.id} className="border p-4 rounded-lg flex justify-between items-center">
                       <div>
                         <p className="font-semibold">Order #{order.id.slice(0, 8)}</p>
@@ -80,7 +88,7 @@ export default async function ProfilePage() {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold">${order.total_amount}</p>
+                        <p className="font-bold">{formatPrice(order.total_amount)}</p>
                         <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full uppercase tracking-wider">
                           {order.status}
                         </span>

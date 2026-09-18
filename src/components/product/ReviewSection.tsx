@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { addReview } from '@/app/actions/reviews'
@@ -15,29 +16,39 @@ interface Review {
   profiles: {
     full_name: string | null
     avatar_url: string | null
-  }
+  } | null
 }
 
 export function ReviewSection({ productId, initialReviews }: { productId: string, initialReviews: Review[] }) {
   const [rating, setRating] = useState(5)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    // React nulls out `currentTarget` once the handler yields, so the form has
+    // to be captured before the await — the old code threw on reset().
+    const form = e.currentTarget
     setIsSubmitting(true)
-    const formData = new FormData(e.currentTarget)
+
+    const formData = new FormData(form)
     formData.append('product_id', productId)
     formData.append('rating', rating.toString())
 
-    const result = await addReview(formData)
-    if (result.error) {
-      toast.error(result.error)
-    } else {
-      toast.success('Review submitted!')
-      e.currentTarget.reset()
+    try {
+      const result = await addReview(formData)
+      if (result.error) {
+        toast.error(result.error)
+        return
+      }
+      toast.success('Review submitted')
+      form.reset()
       setRating(5)
+      // Pull the freshly written review back from the server.
+      router.refresh()
+    } finally {
+      setIsSubmitting(false)
     }
-    setIsSubmitting(false)
   }
 
   return (
@@ -53,12 +64,12 @@ export function ReviewSection({ productId, initialReviews }: { productId: string
             initialReviews.map(review => (
               <div key={review.id} className="flex gap-4 border-b pb-6 last:border-0">
                 <Avatar>
-                  <AvatarImage src={review.profiles.avatar_url || ''} />
-                  <AvatarFallback>{review.profiles.full_name?.charAt(0) || 'U'}</AvatarFallback>
+                  <AvatarImage src={review.profiles?.avatar_url || ''} alt="" />
+                  <AvatarFallback>{review.profiles?.full_name?.charAt(0) ?? 'U'}</AvatarFallback>
                 </Avatar>
                 <div className="space-y-1 flex-1">
                   <div className="flex items-center justify-between">
-                    <p className="font-medium text-sm">{review.profiles.full_name || 'Anonymous User'}</p>
+                    <p className="font-medium text-sm">{review.profiles?.full_name || 'Anonymous User'}</p>
                     <span className="text-xs text-muted-foreground">
                       {new Date(review.created_at).toLocaleDateString()}
                     </span>
@@ -81,13 +92,22 @@ export function ReviewSection({ productId, initialReviews }: { productId: string
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <p className="text-sm font-medium mb-2">Rating</p>
-              <div className="flex gap-1 cursor-pointer">
+              <div className="flex gap-1" role="radiogroup" aria-label="Rating">
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <Star 
-                    key={star} 
-                    className={`w-6 h-6 ${star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground hover:text-yellow-400'}`}
+                  <button
+                    key={star}
+                    type="button"
+                    role="radio"
+                    aria-checked={star === rating}
+                    aria-label={`${star} ${star === 1 ? 'star' : 'stars'}`}
                     onClick={() => setRating(star)}
-                  />
+                    className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <Star
+                      aria-hidden="true"
+                      className={`w-6 h-6 ${star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground hover:text-yellow-400'}`}
+                    />
+                  </button>
                 ))}
               </div>
             </div>

@@ -1,79 +1,134 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-const stripe = process.env.STRIPE_SECRET_KEY 
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-04-10' as any })
-  : null
+export const runtime = 'nodejs'
+
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET
 
-// We need the service role key to bypass RLS since webhooks don't have the user's auth token
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+/**
+ * Webhooks arrive without a user session, so they need the service-role key to
+ * write past RLS. Falling back to the anon key (as an earlier version did) only
+ * produced silent write failures, so this now refuses to run without it.
+ */
+function getServiceClient(): SupabaseClient | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !serviceKey) return null
+  return createClient(url, serviceKey, { auth: { persistSession: false } })
+}
 
 export async function POST(req: Request) {
+  if (!stripe || !endpointSecret) {
+    return NextResponse.json({ error: 'Stripe webhook is not configured' }, { status: 503 })
+  }
+
+  const supabase = getServiceClient()
+  if (!supabase) {
+    console.error('Webhook: SUPABASE_SERVICE_ROLE_KEY is not set; refusing to process events')
+    return NextResponse.json({ error: 'Server is not configured' }, { status: 503 })
+  }
+
+  const payload = await req.text()
+  const signature = req.headers.get('stripe-signature')
+  if (!signature) {
+    return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 })
+  }
+
+  let event: Stripe.Event
   try {
-    if (!stripe || !endpointSecret) {
-      return NextResponse.json({ error: 'Stripe webhook not configured' }, { status: 500 })
-    }
+    event = stripe.webhooks.constructEvent(payload, signature, endpointSecret)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'unknown error'
+    console.error(`Webhook signature verification failed: ${message}`)
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
+  }
 
-    const payload = await req.text()
-    const signature = req.headers.get('stripe-signature') as string
-
-    let event: Stripe.Event
-    try {
-      event = stripe.webhooks.constructEvent(payload, signature, endpointSecret)
-    } catch (err: any) {
-      console.error(`Webhook signature verification failed: ${err.message}`)
-      return NextResponse.json({ error: err.message }, { status: 400 })
-    }
-
+  try {
     if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session
-
-      // Retrieve line items from Stripe to know what was purchased
-      const lineItems = await stripe.checkout.sessions.listLineItems(session.id)
-      const userId = session.client_reference_id
-      const totalAmount = (session.amount_total || 0) / 100
-
-      // Create Order in Supabase
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          user_id: userId || null, // Allow guest orders if userId is null
-          total_amount: totalAmount,
-          status: 'paid',
-          stripe_session_id: session.id,
-        })
-        .select()
-        .single()
-
-      if (orderError) {
-        console.error('Error inserting order:', orderError)
-        return NextResponse.json({ error: 'Failed to create order' }, { status: 500 })
-      }
-
-      // Create Order Items
-      const orderItemsData = lineItems.data.map(item => ({
-        order_id: order.id,
-        product_id: item.price?.product, // Not perfect, we didn't pass product_id properly in price.
-        // Actually we passed it in product_data.metadata.productId during checkout!
-        // We'd have to expand the product or line items to get metadata. 
-        // For the sake of the boilerplate, we will just use the description as a placeholder or fetch product.
-        quantity: item.quantity || 1,
-        price_at_time: (item.amount_total || 0) / 100 / (item.quantity || 1)
-      }))
-
-      // To do this perfectly, you'd need to expand line items' products. 
-      // This is left as an implementation detail for a production app.
-
-      await supabase.from('order_items').insert(orderItemsData)
+      await handleCheckoutCompleted(supabase, stripe, event.data.object)
     }
-
     return NextResponse.json({ received: true })
-  } catch (error: any) {
-    console.error('Webhook error:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+  } catch (error) {
+    console.error('Webhook handler error:', error)
+    // Returning 500 makes Stripe retry, which is what we want for a transient
+    // database failure. The unique constraint on stripe_session_id keeps the
+    // retry from creating a duplicate order.
+    return NextResponse.json({ error: 'Failed to process event' }, { status: 500 })
+  }
+}
+
+async function handleCheckoutCompleted(
+  supabase: SupabaseClient,
+  stripeClient: Stripe,
+  session: Stripe.Checkout.Session,
+) {
+  if (session.payment_status !== 'paid') return
+
+  // Idempotency: Stripe delivers at-least-once, and a retry must not duplicate
+  // the order. `stripe_session_id` is UNIQUE in the schema.
+  const { data: existing } = await supabase
+    .from('orders')
+    .select('id')
+    .eq('stripe_session_id', session.id)
+    .maybeSingle()
+
+  if (existing) return
+
+  const lineItems = await stripeClient.checkout.sessions.listLineItems(session.id, {
+    limit: 100,
+    expand: ['data.price.product'],
+  })
+
+  const { data: order, error: orderError } = await supabase
+    .from('orders')
+    .insert({
+      user_id: session.client_reference_id || null,
+      total_amount: (session.amount_total ?? 0) / 100,
+      status: 'paid',
+      stripe_session_id: session.id,
+      customer_email: session.customer_details?.email ?? null,
+      shipping_address: session.customer_details?.address ?? null,
+    })
+    .select('id')
+    .single()
+
+  if (orderError) {
+    // 23505 = unique_violation: a concurrent delivery won the race. Not an error.
+    if (orderError.code === '23505') return
+    throw new Error(`Failed to insert order: ${orderError.message}`)
+  }
+
+  const orderItems = lineItems.data
+    .map((item) => {
+      const product = item.price?.product
+      const productId =
+        typeof product === 'object' && product !== null && 'metadata' in product
+          ? (product.metadata?.product_id ?? null)
+          : null
+      const quantity = item.quantity ?? 1
+      return {
+        order_id: order.id,
+        product_id: productId,
+        quantity,
+        // Schema column is `unit_price`, not `price_at_time`.
+        unit_price: (item.amount_total ?? 0) / 100 / quantity,
+      }
+    })
+    .filter((row) => row.product_id !== null)
+
+  if (orderItems.length > 0) {
+    const { error: itemsError } = await supabase.from('order_items').insert(orderItems)
+    if (itemsError) throw new Error(`Failed to insert order items: ${itemsError.message}`)
+  }
+
+  // Decrement stock for what was actually paid for.
+  for (const row of orderItems) {
+    const { error } = await supabase.rpc('decrement_inventory', {
+      p_product_id: row.product_id,
+      p_quantity: row.quantity,
+    })
+    if (error) console.error('Failed to decrement inventory', row.product_id, error.message)
   }
 }

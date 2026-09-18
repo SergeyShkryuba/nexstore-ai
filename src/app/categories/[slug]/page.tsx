@@ -1,8 +1,16 @@
 import { ProductCard } from '@/components/product/ProductCard'
 import { notFound } from 'next/navigation'
-import { createClient } from '@/utils/supabase/server'
+import { createPublicClient } from '@/utils/supabase/public'
 
 import type { Metadata } from 'next'
+
+export const revalidate = 300
+
+export async function generateStaticParams() {
+  const supabase = createPublicClient()
+  const { data } = await supabase.from('categories').select('slug')
+  return [{ slug: 'all' }, ...(data ?? []).map((c) => ({ slug: c.slug as string }))]
+}
 
 interface CategoryPageProps {
   params: Promise<{
@@ -12,7 +20,7 @@ interface CategoryPageProps {
 
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
   const { slug } = await params
-  const supabase = await createClient()
+  const supabase = createPublicClient()
   const { data: category } = await supabase.from('categories').select('*').eq('slug', slug).single()
 
   if (!category) return { title: 'Category Not Found' }
@@ -36,7 +44,7 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
 
 export default async function CategoryPage({ params }: CategoryPageProps) {
   const { slug } = await params
-  const supabase = await createClient()
+  const supabase = createPublicClient()
   
   const isAll = slug === 'all'
   let category = null
