@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
+  const router = useRouter()
   const supabase = createClient()
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -44,9 +46,9 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       return
     }
 
-    toast.success('Successfully signed in')
+    toast.success('Signed in')
     onClose()
-    window.location.reload() // Force reload to update server components with session
+    router.refresh()
   }
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -70,7 +72,9 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       return
     }
 
-    toast.success('Successfully signed up! Please check your email to verify.')
+    toast.success('Account created', {
+      description: 'Check your inbox to confirm your email address.',
+    })
     onClose()
   }
 

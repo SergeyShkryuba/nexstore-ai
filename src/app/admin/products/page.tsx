@@ -23,7 +23,7 @@ export default async function AdminProductsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Products</h1>
           <p className="text-muted-foreground mt-2">
-            Manage your store's inventory and product details.
+            Manage your store&apos;s inventory and product details.
           </p>
         </div>
         <Link href="/admin/products/new">

@@ -1,30 +1,26 @@
 import type { Metadata } from "next";
-import { Inter, Geist_Mono } from "next/font/google";
+import "@fontsource-variable/inter";
+import "@fontsource-variable/jetbrains-mono";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { Toaster } from 'sonner';
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 export const metadata: Metadata = {
+  // Required for relative OG/Twitter image URLs to resolve to absolute ones.
+  metadataBase: new URL(siteUrl),
   title: {
     template: "%s | NexStore AI",
     default: "NexStore AI - Next Generation E-commerce",
   },
-  description: "Experience the future of shopping with our AI-powered e-commerce platform.",
+  description:
+    "A full-stack Next.js storefront: catalogue search, cart, Stripe checkout and an admin panel.",
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+    url: siteUrl,
     title: "NexStore AI - Next Generation E-commerce",
     description: "Experience the future of shopping with our AI-powered e-commerce platform.",
     siteName: "NexStore AI",
@@ -42,11 +38,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${geistMono.variable}`}>
+    <html lang="en" suppressHydrationWarning>
       <body
         suppressHydrationWarning
         className="antialiased min-h-screen flex flex-col font-sans"
       >
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:ring-2 focus:ring-ring"
+        >
+          Skip to content
+        </a>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -54,7 +56,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <Header />
-          <main className="flex-1">{children}</main>
+          <main id="main-content" className="flex-1">{children}</main>
           <Toaster />
         </ThemeProvider>
       </body>

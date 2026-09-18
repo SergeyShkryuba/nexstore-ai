@@ -36,10 +36,11 @@ export default function NewProductPage() {
     if (result.error) {
       toast.error(result.error)
       setIsSubmitting(false)
-    } else {
-      toast.success('Product created successfully')
-      router.push('/admin/products')
+      return
     }
+
+    toast.success('Product created')
+    router.push('/admin/products')
   }
 
   return (
@@ -78,19 +79,20 @@ export default function NewProductPage() {
 
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="price">Price ($) <span className="text-destructive">*</span></Label>
+                <Label htmlFor="price">Price (€) <span className="text-destructive">*</span></Label>
                 <Input id="price" name="price" type="number" step="0.01" min="0" required placeholder="99.99" />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="category_id">Category <span className="text-destructive">*</span></Label>
-                <select 
-                  id="category_id" 
-                  name="category_id" 
+                <select
+                  id="category_id"
+                  name="category_id"
                   required
+                  defaultValue=""
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                  <option value="" disabled selected>Select a category</option>
+                  <option value="" disabled>Select a category</option>
                   {categories.map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
@@ -99,9 +101,27 @@ export default function NewProductPage() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="inventory_count">Stock</Label>
+              <Input
+                id="inventory_count"
+                name="inventory_count"
+                type="number"
+                step="1"
+                min="0"
+                defaultValue={0}
+              />
+              <p className="text-xs text-muted-foreground">
+                Checkout refuses orders that exceed this number.
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="image_url">Image URL</Label>
-              <Input id="image_url" name="image_url" type="url" placeholder="https://example.com/image.jpg" />
-              <p className="text-xs text-muted-foreground">Provide a direct link to the product image.</p>
+              <Input id="image_url" name="image_url" type="url" placeholder="https://images.unsplash.com/photo-..." />
+              <p className="text-xs text-muted-foreground">
+                The host must be listed in <code>images.remotePatterns</code> in{' '}
+                <code>next.config.ts</code>, otherwise next/image will refuse to load it.
+              </p>
             </div>
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>

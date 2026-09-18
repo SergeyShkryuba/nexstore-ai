@@ -28,7 +28,9 @@ export function WishlistButton({ productId }: { productId: string }) {
         .select('id')
         .eq('user_id', user.id)
         .eq('product_id', productId)
-        .single()
+        // maybeSingle: `single()` treats "no row" as an error, and an empty
+        // wishlist is the normal case, not a failure.
+        .maybeSingle()
       
       if (mounted) {
         setIsWishlisted(!!data)
@@ -38,7 +40,7 @@ export function WishlistButton({ productId }: { productId: string }) {
     checkWishlist()
 
     return () => { mounted = false }
-  }, [productId, supabase.auth])
+  }, [productId, supabase])
 
   const handleToggle = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -61,7 +63,7 @@ export function WishlistButton({ productId }: { productId: string }) {
       } else {
         toast.success(isWishlisted ? 'Removed from wishlist' : 'Added to wishlist')
       }
-    } catch (err) {
+    } catch {
       setIsWishlisted(isWishlisted) // revert
       toast.error('Failed to update wishlist')
     }
