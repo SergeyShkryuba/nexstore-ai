@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { z } from 'zod'
 import { createClient } from '@/utils/supabase/server'
+import { siteUrl } from '@/lib/site'
 
 export const runtime = 'nodejs'
 
@@ -121,7 +122,7 @@ export async function POST(req: Request) {
     } = await supabase.auth.getUser()
 
     const origin =
-      req.headers.get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+      req.headers.get('origin') ?? siteUrl
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',

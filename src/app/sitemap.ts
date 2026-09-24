@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { createPublicClient } from '@/utils/supabase/public'
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+import { siteUrl } from '@/lib/site'
 
 export const revalidate = 3600
 
