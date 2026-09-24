@@ -1,70 +1,119 @@
 import Link from 'next/link'
-import { buttonVariants } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import Image from 'next/image'
+import { ArrowRight } from 'lucide-react'
 import { SearchSection } from '@/components/home/SearchSection'
 import { ProductCard } from '@/components/product/ProductCard'
 import { createPublicClient } from '@/utils/supabase/public'
 
 export const revalidate = 300
 
+/** The "budget picks" shelf; its link opens the catalogue with the same filter. */
+const BUDGET = 50
+
+const CARD_FIELDS = 'id, title, slug, price, image_urls, inventory_count'
+
 export default async function Home() {
   const supabase = createPublicClient()
 
   // Categories used to be hard-coded in JSX, so adding one in the admin panel
   // never showed up on the homepage.
-  const [{ data: categories }, { data: featured }] = await Promise.all([
-    supabase.from('categories').select('id, name, slug, description').order('name'),
+  const [{ data: categories }, { data: featured }, { data: budgetPicks }] = await Promise.all([
+    supabase.from('categories').select('id, name, slug, description, image_url').order('name'),
+    supabase.from('products').select(CARD_FIELDS).order('created_at', { ascending: false }).limit(4),
     supabase
       .from('products')
-      .select('id, title, slug, price, image_urls')
-      .order('created_at', { ascending: false })
+      .select(CARD_FIELDS)
+      .lte('price', BUDGET)
+      .gt('inventory_count', 0)
+      .order('price')
       .limit(4),
   ])
 
   return (
-    <div className="container mx-auto px-4 py-12">
+    <div className="container mx-auto px-4 py-8 md:py-12">
       <SearchSection />
 
-      {featured && featured.length > 0 && (
-        <section className="py-16 mt-12 border-t">
-          <div className="flex items-baseline justify-between mb-8">
-            <h2 className="text-3xl font-bold">New arrivals</h2>
-            <Link
-              href="/categories/all"
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
-              View all →
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featured.map((product) => (
-              <ProductCard key={product.id} product={product} />
+      {categories && categories.length > 0 && (
+        <section className="py-16">
+          <h2 className="text-3xl font-bold mb-8">Shop by category</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {categories.map((category) => (
+              <Link
+                key={category.id}
+                href={`/categories/${category.slug}`}
+                className="group relative isolate flex aspect-[4/3] items-end overflow-hidden rounded-2xl border bg-muted p-6 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                {category.image_url && (
+                  <Image
+                    src={category.image_url}
+                    alt=""
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="-z-20 object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                )}
+                {/* Scrim: the label stays readable whatever the photo does. */}
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-0 -z-10 bg-linear-to-t from-black/80 via-black/30 to-transparent"
+                />
+                <div className="text-white">
+                  <h3 className="text-2xl font-semibold">{category.name}</h3>
+                  <p className="mt-1 text-sm text-white/80">{category.description}</p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium">
+                    Shop now
+                    <ArrowRight
+                      aria-hidden="true"
+                      className="size-4 transition-transform group-hover:translate-x-1"
+                    />
+                  </span>
+                </div>
+              </Link>
             ))}
           </div>
         </section>
       )}
 
-      {categories && categories.length > 0 && (
-        <section className="py-16 border-t">
-          <h2 className="text-3xl font-bold mb-8 text-center">Browse by category</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {categories.map((category) => (
-              <Card key={category.id} className="hover:border-primary transition-colors">
-                <CardContent className="p-6 flex flex-col items-center text-center space-y-4">
-                  <h3 className="text-xl font-semibold">{category.name}</h3>
-                  <p className="text-sm text-muted-foreground flex-1">{category.description}</p>
-                  <Link
-                    href={`/categories/${category.slug}`}
-                    className={buttonVariants({ variant: 'secondary', className: 'w-full' })}
-                  >
-                    Browse {category.name}
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
+      {featured && featured.length > 0 && (
+        <ProductShelf title="New arrivals" href="/categories/all" linkLabel="View all" products={featured} />
+      )}
+
+      {budgetPicks && budgetPicks.length > 0 && (
+        <ProductShelf
+          title={`Under €${BUDGET}`}
+          href={`/categories/all?sort=price-asc&max=${BUDGET}&stock=1`}
+          linkLabel={`All under €${BUDGET}`}
+          products={budgetPicks}
+        />
       )}
     </div>
+  )
+}
+
+function ProductShelf({
+  title,
+  href,
+  linkLabel,
+  products,
+}: {
+  title: string
+  href: string
+  linkLabel: string
+  products: Parameters<typeof ProductCard>[0]['product'][]
+}) {
+  return (
+    <section className="py-16 border-t">
+      <div className="flex items-baseline justify-between mb-8">
+        <h2 className="text-3xl font-bold">{title}</h2>
+        <Link href={href} className="text-sm text-muted-foreground hover:text-foreground">
+          {linkLabel} →
+        </Link>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {products.map((product) => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+      </div>
+    </section>
   )
 }

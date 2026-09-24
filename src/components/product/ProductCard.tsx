@@ -9,6 +9,8 @@ import { ImageOff, ShoppingCart } from 'lucide-react'
 import { toast } from 'sonner'
 import { WishlistButton } from './WishlistButton'
 import { formatPrice } from '@/lib/format'
+import { stockLabel, stockLevel } from '@/lib/stock'
+import { cn } from '@/lib/utils'
 
 interface ProductCardProps {
   product: {
@@ -25,7 +27,8 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem)
   const imageUrl = product.image_urls?.[0]
-  const soldOut = product.inventory_count != null && product.inventory_count <= 0
+  const stock = stockLevel(product.inventory_count)
+  const soldOut = stock === 'out'
 
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -57,9 +60,14 @@ export function ProductCard({ product }: ProductCardProps) {
               <span className="sr-only">No image available</span>
             </div>
           )}
-          {soldOut && (
-            <span className="absolute bottom-2 left-2 rounded-md bg-background/90 px-2 py-1 text-xs font-medium">
-              Sold out
+          {(stock === 'out' || stock === 'low') && (
+            <span
+              className={cn(
+                'absolute bottom-2 left-2 rounded-md px-2 py-1 text-xs font-medium',
+                stock === 'out' ? 'bg-background/90' : 'bg-amber-500 text-black',
+              )}
+            >
+              {stock === 'out' ? 'Sold out' : stockLabel(product.inventory_count)}
             </span>
           )}
         </div>
