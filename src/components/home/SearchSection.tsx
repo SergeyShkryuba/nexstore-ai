@@ -138,7 +138,7 @@ export function SearchSection() {
         {/* Clipped in its own layer so the suggestions list can overflow the hero. */}
         <div aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden rounded-3xl">
           <Image src={HERO_IMAGE} alt="" fill priority sizes="100vw" className="object-cover" />
-          <div className="absolute inset-0 bg-linear-to-b from-background/80 via-background/90 to-background" />
+          <div className="absolute inset-0 bg-linear-to-b from-background/55 via-background/70 to-background/95" />
         </div>
 
         <div className="mx-auto w-full max-w-2xl px-4 py-16 md:py-24 text-center space-y-6">
