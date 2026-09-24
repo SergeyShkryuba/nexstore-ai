@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { OrderStatusSelect } from '@/components/admin/OrderStatusSelect'
 import { formatPrice } from '@/lib/format'
 import type { OrderStatus } from '@/lib/admin-schemas'
+import { shippingLines } from '@/lib/orders'
 
 type OrderItemRow = {
   quantity: number
@@ -20,7 +21,7 @@ export default async function AdminOrdersPage() {
   const { data: orders, error } = await supabase
     .from('orders')
     .select(
-      'id, created_at, status, total_amount, customer_email, order_items(quantity, unit_price, product:products(title, slug))',
+      'id, created_at, status, total_amount, customer_email, shipping_address, order_items(quantity, unit_price, product:products(title, slug))',
     )
     .order('created_at', { ascending: false })
     .limit(200)
@@ -52,15 +53,27 @@ export default async function AdminOrdersPage() {
               <tbody className="divide-y">
                 {orders?.map((order) => {
                   const items = (order.order_items ?? []) as unknown as OrderItemRow[]
+                  const shipping = shippingLines(order.shipping_address)
                   return (
                     <tr key={order.id} className="align-top hover:bg-muted/50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="font-mono text-xs">#{order.id.slice(0, 8)}</div>
+                        <Link href={`/profile/orders/${order.id}`} className="font-mono text-xs hover:underline">
+                          #{order.id.slice(0, 8)}
+                        </Link>
                         <div className="text-muted-foreground text-xs mt-1">
                           {dateFormatter.format(new Date(order.created_at))}
                         </div>
                       </td>
-                      <td className="px-6 py-4">{order.customer_email ?? <span className="text-muted-foreground">Guest</span>}</td>
+                      <td className="px-6 py-4">
+                        <div>{shipping.name ?? order.customer_email ?? <span className="text-muted-foreground">Guest</span>}</div>
+                        {shipping.name && order.customer_email && (
+                          <div className="text-xs text-muted-foreground">{order.customer_email}</div>
+                        )}
+                        {/* City and country are enough to scan; the full address is on the order page. */}
+                        {shipping.lines.length > 0 && (
+                          <div className="text-xs text-muted-foreground">{shipping.lines.slice(-2).join(', ')}</div>
+                        )}
+                      </td>
                       <td className="px-6 py-4">
                         <ul className="space-y-1">
                           {items.map((item, i) => (
