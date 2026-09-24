@@ -17,12 +17,15 @@ interface ProductCardProps {
     slug: string
     price: number
     image_urls: string[] | null
+    /** Optional: callers that do not select stock get no sold-out state. */
+    inventory_count?: number | null
   }
 }
 
 export function ProductCard({ product }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem)
   const imageUrl = product.image_urls?.[0]
+  const soldOut = product.inventory_count != null && product.inventory_count <= 0
 
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -54,6 +57,11 @@ export function ProductCard({ product }: ProductCardProps) {
               <span className="sr-only">No image available</span>
             </div>
           )}
+          {soldOut && (
+            <span className="absolute bottom-2 left-2 rounded-md bg-background/90 px-2 py-1 text-xs font-medium">
+              Sold out
+            </span>
+          )}
         </div>
         <CardContent className="p-4">
           <h3 className="font-semibold text-lg line-clamp-1">{product.title}</h3>
@@ -68,9 +76,9 @@ export function ProductCard({ product }: ProductCardProps) {
       </div>
 
       <CardFooter className="p-4 pt-0 mt-auto">
-        <Button className="w-full" onClick={handleAdd}>
+        <Button className="w-full" onClick={handleAdd} disabled={soldOut}>
           <ShoppingCart className="w-4 h-4 mr-2" aria-hidden="true" />
-          Add to Cart
+          {soldOut ? 'Sold out' : 'Add to Cart'}
         </Button>
       </CardFooter>
     </Card>

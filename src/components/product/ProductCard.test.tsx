@@ -81,4 +81,20 @@ describe('ProductCard', () => {
 
     expect(screen.getByRole('heading', { name: 'Awesome Gadget' })).toBeInTheDocument()
   })
+
+  it('marks a sold-out product and does not add it to the cart', async () => {
+    const user = userEvent.setup()
+    render(<ProductCard product={{ ...mockProduct, inventory_count: 0 }} />)
+
+    const button = screen.getByRole('button', { name: /sold out/i })
+    expect(button).toBeDisabled()
+    await user.click(button)
+    expect(useCartStore.getState().items).toEqual([])
+  })
+
+  it('shows no stock state when the caller did not select stock', () => {
+    render(<ProductCard product={mockProduct} />)
+
+    expect(screen.queryByText(/sold out/i)).not.toBeInTheDocument()
+  })
 })

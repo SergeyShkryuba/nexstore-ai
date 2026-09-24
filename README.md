@@ -86,6 +86,11 @@ To make yourself an admin:
 update profiles set role = 'admin' where id = '<your auth.users id>';
 ```
 
+**Keep-alive.** A free Supabase project is paused after about a week without
+traffic, and one paused for 90 days cannot be restored. `vercel.json` schedules
+a daily Vercel Cron call to `GET /api/keepalive`, which makes one cheap read.
+Set `CRON_SECRET` in the Vercel project so only the scheduler can call it.
+
 ### Stripe (optional)
 
 Without `STRIPE_SECRET_KEY` the app runs fine and checkout returns a clear

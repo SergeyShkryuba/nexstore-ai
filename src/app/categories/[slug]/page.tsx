@@ -1,4 +1,5 @@
-import { ProductCard } from '@/components/product/ProductCard'
+import { Suspense } from 'react'
+import { CatalogView, ProductGrid, type CatalogItem } from '@/components/catalog/CatalogView'
 import { notFound } from 'next/navigation'
 import { createPublicClient } from '@/utils/supabase/public'
 
@@ -20,6 +21,8 @@ interface CategoryPageProps {
 
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
   const { slug } = await params
+  if (slug === 'all') return { title: 'All Products' }
+
   const supabase = createPublicClient()
   const { data: category } = await supabase.from('categories').select('*').eq('slug', slug).single()
 
@@ -57,13 +60,15 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     }
   }
 
-  const query = supabase.from('products').select('*')
+  const query = supabase
+    .from('products')
+    .select('id, title, slug, price, image_urls, inventory_count, created_at')
   if (!isAll && category) {
     query.eq('category_id', category.id)
   }
 
   const { data } = await query
-  const products = data || []
+  const products: CatalogItem[] = data || []
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -77,11 +82,11 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
       {products.length === 0 ? (
         <p className="text-muted-foreground">No products found in this category.</p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {products.map(product => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        // The fallback is the full, unfiltered grid: it is what gets prerendered,
+        // and the filter bar takes over once the URL can be read in the browser.
+        <Suspense fallback={<ProductGrid products={products} />}>
+          <CatalogView products={products} />
+        </Suspense>
       )}
     </div>
   )
