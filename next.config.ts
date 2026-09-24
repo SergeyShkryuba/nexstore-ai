@@ -7,6 +7,12 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "placehold.co" },
+      // Photos uploaded from the admin panel (see `isAllowedImageUrl`).
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/object/public/product-images/**",
+      },
     ],
   },
   poweredByHeader: false,
