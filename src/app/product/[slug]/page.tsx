@@ -7,6 +7,9 @@ import { Star, Shield, Truck, RotateCcw } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { createPublicClient } from '@/utils/supabase/public'
 import { averageRating, formatPrice } from '@/lib/format'
+import { productJsonLd, serializeJsonLd } from '@/lib/structured-data'
+import { siteUrl } from '@/lib/site'
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs'
 import { stockLabel, stockLevel } from '@/lib/stock'
 import { cn } from '@/lib/utils'
 
@@ -36,6 +39,7 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   return {
     title: product.title,
     description: product.description,
+    alternates: { canonical: `/product/${product.slug}` },
     openGraph: {
       title: product.title,
       description: product.description || undefined,
@@ -54,11 +58,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params
   const supabase = createPublicClient()
 
-  const { data: product } = await supabase.from('products').select('*').eq('slug', slug).single()
+  const { data: product } = await supabase
+    .from('products')
+    .select('*, category:categories(name, slug)')
+    .eq('slug', slug)
+    .single()
   
   if (!product) {
     notFound()
   }
+
+  const category = product.category as { name: string; slug: string } | null
 
   const { data: relatedProducts } = await supabase
     .from('products')
@@ -81,8 +91,26 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const rating = averageRating(reviewList.map((r) => r.rating as number))
   const stock = stockLevel(product.inventory_count)
 
+  const crumbs = [
+    { name: 'Home', path: '/' },
+    category
+      ? { name: category.name, path: `/categories/${category.slug}` }
+      : { name: 'All products', path: '/categories/all' },
+    { name: product.title, path: `/product/${product.slug}` },
+  ]
+  const productData = productJsonLd(product, {
+    siteUrl,
+    category: category?.name,
+    ratings: reviewList.map((r) => r.rating as number),
+  })
+
   return (
     <div className="container mx-auto px-4 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(productData) }}
+      />
+      <Breadcrumbs crumbs={crumbs} />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16">
         
         <ProductGallery images={product.image_urls ?? []} title={product.title} />

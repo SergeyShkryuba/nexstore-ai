@@ -4,6 +4,7 @@ import "@fontsource-variable/jetbrains-mono";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { loadNavCategories } from "@/lib/nav-categories";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { Toaster } from 'sonner';
 
@@ -33,11 +34,14 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Header and footer both list the categories; one query serves both.
+  const categories = await loadNavCategories();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -56,9 +60,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Header />
+          <Header categories={categories} />
           <main id="main-content" className="flex-1">{children}</main>
-          <Footer />
+          <Footer categories={categories} />
           <Toaster />
         </ThemeProvider>
       </body>

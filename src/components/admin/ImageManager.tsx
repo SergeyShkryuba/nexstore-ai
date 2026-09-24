@@ -22,18 +22,29 @@ const MAX_BYTES = 5 * 1024 * 1024
  * Removing a photo only drops it from the product. The file stays in the
  * bucket: until the form is saved, the product still points at it.
  */
-export function ImageManager({ initial }: { initial: string[] }) {
+export function ImageManager({
+  initial,
+  name = 'image_urls',
+  max = MAX_PRODUCT_IMAGES,
+  hint,
+}: {
+  initial: string[]
+  /** Form field name; repeated once per image. */
+  name?: string
+  max?: number
+  hint?: string
+}) {
   const [urls, setUrls] = useState(initial)
   const [uploading, setUploading] = useState(0)
   const [linkDraft, setLinkDraft] = useState('')
   const fileInput = useRef<HTMLInputElement>(null)
 
-  const room = MAX_PRODUCT_IMAGES - urls.length
+  const room = max - urls.length
 
   const upload = async (files: FileList | null) => {
     if (!files?.length) return
     const picked = Array.from(files).slice(0, room)
-    if (files.length > room) toast.warning(`Only ${MAX_PRODUCT_IMAGES} images per product`)
+    if (files.length > room) toast.warning(max === 1 ? 'Only one image here' : `Only ${max} images here`)
 
     const supabase = createClient()
     setUploading((n) => n + picked.length)
@@ -86,7 +97,7 @@ export function ImageManager({ initial }: { initial: string[] }) {
   return (
     <div className="space-y-3">
       {urls.map((url) => (
-        <input key={url} type="hidden" name="image_urls" value={url} />
+        <input key={url} type="hidden" name={name} value={url} />
       ))}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -95,11 +106,11 @@ export function ImageManager({ initial }: { initial: string[] }) {
             key={url}
             className={cn(
               'group relative aspect-square overflow-hidden rounded-lg border bg-muted',
-              i === 0 && 'ring-2 ring-primary',
+              i === 0 && max > 1 && 'ring-2 ring-primary',
             )}
           >
-            <Image src={url} alt={`Product image ${i + 1}`} fill sizes="160px" className="object-cover" />
-            {i === 0 && (
+            <Image src={url} alt={`Image ${i + 1}`} fill sizes="160px" className="object-cover" />
+            {i === 0 && max > 1 && (
               <span className="absolute left-1.5 top-1.5 rounded bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
                 Main
               </span>
@@ -114,6 +125,8 @@ export function ImageManager({ initial }: { initial: string[] }) {
             >
               <X />
             </Button>
+            {/* Ordering controls only mean something with more than one image. */}
+            {max > 1 && (
             <div className="absolute inset-x-1.5 bottom-1.5 flex justify-between gap-1">
               <Button
                 type="button"
@@ -147,6 +160,7 @@ export function ImageManager({ initial }: { initial: string[] }) {
                 <ChevronRight />
               </Button>
             </div>
+            )}
           </div>
         ))}
 
@@ -205,8 +219,8 @@ export function ImageManager({ initial }: { initial: string[] }) {
       )}
 
       <p className="text-xs text-muted-foreground">
-        Up to {MAX_PRODUCT_IMAGES} images, JPEG/PNG/WebP/AVIF, 5 MB each. The first is shown on cards
-        and in search.
+        {hint ??
+          `Up to ${max} images, JPEG/PNG/WebP/AVIF, 5 MB each. The first is shown on cards and in search.`}
       </p>
     </div>
   )

@@ -13,17 +13,31 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { deleteProduct } from '@/app/actions/admin'
 
-/** Deleting cannot be undone, so it always goes through a confirmation. */
-export function DeleteProductButton({ productId, title }: { productId: string; title: string }) {
+/**
+ * Deleting cannot be undone, so it always goes through a confirmation.
+ * `action` is a server action with its id already bound, e.g.
+ * `deleteProduct.bind(null, product.id)`.
+ */
+export function ConfirmDeleteButton({
+  action,
+  name,
+  question,
+  consequence,
+}: {
+  action: () => Promise<{ success: true } | { error: string }>
+  /** What is being deleted, as shown to the admin. */
+  name: string
+  question: string
+  consequence: string
+}) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
   const confirm = async () => {
     setIsDeleting(true)
-    const result = await deleteProduct(productId)
+    const result = await action()
     setIsDeleting(false)
 
     if ('error' in result) {
@@ -31,7 +45,7 @@ export function DeleteProductButton({ productId, title }: { productId: string; t
       return
     }
     setOpen(false)
-    toast.success('Product deleted', { description: title })
+    toast.success('Deleted', { description: name })
     router.refresh()
   }
 
@@ -42,7 +56,7 @@ export function DeleteProductButton({ productId, title }: { productId: string; t
         size="icon"
         className="text-destructive hover:text-destructive"
         onClick={() => setOpen(true)}
-        aria-label={`Delete ${title}`}
+        aria-label={`Delete ${name}`}
       >
         <Trash2 />
       </Button>
@@ -50,10 +64,9 @@ export function DeleteProductButton({ productId, title }: { productId: string; t
       <Dialog open={open} onOpenChange={(next) => !isDeleting && setOpen(next)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete this product?</DialogTitle>
+            <DialogTitle>{question}</DialogTitle>
             <DialogDescription>
-              &ldquo;{title}&rdquo; will disappear from the store and from search. Past orders keep
-              their line items. This cannot be undone.
+              &ldquo;{name}&rdquo; — {consequence} This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

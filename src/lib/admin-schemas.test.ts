@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isAllowedImageUrl, orderStatusSchema, parseProductForm, slugify } from './admin-schemas'
+import { isAllowedImageUrl, orderStatusSchema, parseCategoryForm, parseProductForm, slugify } from './admin-schemas'
 
 const SUPABASE = 'https://abc123.supabase.co'
 const STORAGE = `${SUPABASE}/storage/v1/object/public/product-images/products/1.webp`
@@ -92,5 +92,21 @@ describe('orderStatusSchema', () => {
 describe('slugify', () => {
   it('makes URL-safe slugs', () => {
     expect(slugify('Café Crème — 2 Pack!')).toBe('cafe-creme-2-pack')
+  })
+})
+
+describe('parseCategoryForm', () => {
+  it('trims and accepts a category without an image', () => {
+    const result = parseCategoryForm(form({ name: '  Outdoor ', description: 'Gear for outside.' }))
+    expect(result.success && result.data).toEqual({ name: 'Outdoor', description: 'Gear for outside.', image_url: '' })
+  })
+
+  it('accepts an allowed image and refuses others', () => {
+    expect(parseCategoryForm(form({ name: 'Outdoor', image_url: 'https://images.unsplash.com/photo-1' })).success).toBe(true)
+    expect(parseCategoryForm(form({ name: 'Outdoor', image_url: 'https://example.com/x.jpg' })).success).toBe(false)
+  })
+
+  it('needs a real name', () => {
+    expect(parseCategoryForm(form({ name: ' ' })).success).toBe(false)
   })
 })

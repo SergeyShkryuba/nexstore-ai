@@ -10,8 +10,10 @@ import { ThemeToggle } from '../theme/ThemeToggle'
 import { AuthModal } from '../auth/AuthModal'
 import { createClient } from '@/utils/supabase/client'
 import { User as SupabaseUser } from '@supabase/supabase-js'
+import type { NavCategory } from '@/lib/nav-categories'
 
-export function Header() {
+/** Categories come from the root layout, so ones added in the admin appear here. */
+export function Header({ categories }: { categories: NavCategory[] }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   
@@ -88,9 +90,9 @@ export function Header() {
         </Link>
 
         <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
-          <Link href="/categories/electronics" className="transition-colors hover:text-foreground/80 text-foreground/60">Electronics</Link>
-          <Link href="/categories/clothing" className="transition-colors hover:text-foreground/80 text-foreground/60">Clothing</Link>
-          <Link href="/categories/smart-home" className="transition-colors hover:text-foreground/80 text-foreground/60">Smart Home</Link>
+          {categories.map((c) => (
+            <Link key={c.slug} href={`/categories/${c.slug}`} className="transition-colors hover:text-foreground/80 text-foreground/60">{c.name}</Link>
+          ))}
         </nav>
 
         <div className="flex flex-1 items-center justify-end space-x-4">
@@ -135,9 +137,9 @@ export function Header() {
       {isMobileMenuOpen && (
         <div className="md:hidden border-t p-4 bg-background shadow-lg">
           <nav className="flex flex-col space-y-4 text-sm font-medium">
-            <Link href="/categories/electronics" onClick={closeMenu} className="transition-colors hover:text-foreground/80 text-foreground/60 p-2 rounded-md hover:bg-muted">Electronics</Link>
-            <Link href="/categories/clothing" onClick={closeMenu} className="transition-colors hover:text-foreground/80 text-foreground/60 p-2 rounded-md hover:bg-muted">Clothing</Link>
-            <Link href="/categories/smart-home" onClick={closeMenu} className="transition-colors hover:text-foreground/80 text-foreground/60 p-2 rounded-md hover:bg-muted">Smart Home</Link>
+            {categories.map((c) => (
+              <Link key={c.slug} href={`/categories/${c.slug}`} onClick={closeMenu} className="transition-colors hover:text-foreground/80 text-foreground/60 p-2 rounded-md hover:bg-muted">{c.name}</Link>
+            ))}
             {isAdmin && (
               <Link href="/admin" onClick={closeMenu} className="flex items-center gap-2 border-t pt-4 p-2 rounded-md hover:bg-muted">
                 <LayoutDashboard className="size-4" aria-hidden="true" />

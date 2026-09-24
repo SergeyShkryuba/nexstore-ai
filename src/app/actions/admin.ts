@@ -3,7 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { contentHash, embedTexts, productEmbeddingText, toPgVector } from '@/lib/embeddings'
-import { orderStatusSchema, parseProductForm, slugify } from '@/lib/admin-schemas'
+import { orderStatusSchema, parseCategoryForm, parseProductForm, slugify } from '@/lib/admin-schemas'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 type ActionResult = { success: true; id?: string } | { error: string }
@@ -24,6 +24,21 @@ async function requireAdmin(): Promise<{ supabase: Supabase } | { error: string 
   if (profile?.role !== 'admin') return { error: 'Forbidden' }
 
   return { supabase }
+}
+
+/**
+ * `slug` is UNIQUE, so a second "Blue T-Shirt" used to fail with a raw
+ * Postgres error. Suffix until it is free. A race between two admins saving
+ * the same name at once still ends in the unique constraint, as an error.
+ */
+async function freeSlug(supabase: Supabase, table: 'products' | 'categories', base: string) {
+  let slug = base
+  for (let attempt = 2; attempt <= 20; attempt++) {
+    const { data: clash } = await supabase.from(table).select('id').eq('slug', slug).maybeSingle()
+    if (!clash) break
+    slug = `${base}-${attempt}`
+  }
+  return slug
 }
 
 function revalidateCatalogue(slug?: string) {
@@ -73,16 +88,7 @@ export async function createProduct(formData: FormData): Promise<ActionResult> {
     return { error: parsed.error.issues[0]?.message ?? 'Invalid product data' }
   }
 
-  const baseSlug = slugify(parsed.data.title) || 'product'
-
-  // `slug` is UNIQUE, so a second "Blue T-Shirt" used to fail with a raw
-  // Postgres error. Suffix until it is free.
-  let slug = baseSlug
-  for (let attempt = 2; attempt <= 20; attempt++) {
-    const { data: clash } = await supabase.from('products').select('id').eq('slug', slug).maybeSingle()
-    if (!clash) break
-    slug = `${baseSlug}-${attempt}`
-  }
+  const slug = await freeSlug(supabase, 'products', slugify(parsed.data.title) || 'product')
 
   const { data: created, error } = await supabase
     .from('products')
@@ -179,5 +185,104 @@ export async function updateOrderStatus(orderId: string, status: string): Promis
 
   revalidatePath('/admin/orders')
   revalidatePath('/profile')
+  return { success: true }
+}
+
+// ------------------------------- Categories ---------------------------------
+
+/**
+ * Categories appear in the header, the footer, the homepage and every
+ * category page, so a change revalidates the whole layout.
+ */
+function revalidateCategories() {
+  revalidatePath('/', 'layout')
+}
+
+/** A category's name is part of its products' search text; re-embed them. */
+async function reembedCategoryProducts(supabase: Supabase, categoryId: string | null, productIds?: string[]) {
+  const ids =
+    productIds ??
+    ((await supabase.from('products').select('id').eq('category_id', categoryId)).data ?? []).map((p) => p.id)
+  for (const id of ids) await syncEmbedding(supabase, id)
+}
+
+export async function createCategory(formData: FormData): Promise<ActionResult> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return auth
+  const { supabase } = auth
+
+  const parsed = parseCategoryForm(formData)
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid category' }
+
+  const { name, description, image_url } = parsed.data
+  const slug = await freeSlug(supabase, 'categories', slugify(name) || 'category')
+
+  const { data: created, error } = await supabase
+    .from('categories')
+    .insert({ name, slug, description, image_url: image_url || null })
+    .select('id')
+    .single()
+
+  if (error) {
+    console.error('Error creating category:', error)
+    return { error: 'Failed to create category' }
+  }
+
+  revalidateCategories()
+  return { success: true, id: created.id }
+}
+
+/** The slug is kept on purpose: renaming must not break links to the category. */
+export async function updateCategory(categoryId: string, formData: FormData): Promise<ActionResult> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return auth
+  const { supabase } = auth
+
+  const parsed = parseCategoryForm(formData)
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid category' }
+
+  const { data: before } = await supabase.from('categories').select('name').eq('id', categoryId).maybeSingle()
+  if (!before) return { error: 'Category not found' }
+
+  const { name, description, image_url } = parsed.data
+  const { error } = await supabase
+    .from('categories')
+    .update({ name, description, image_url: image_url || null })
+    .eq('id', categoryId)
+
+  if (error) {
+    console.error('Error updating category:', error)
+    return { error: 'Failed to update category' }
+  }
+
+  if (before.name !== name) await reembedCategoryProducts(supabase, categoryId)
+  revalidateCategories()
+  return { success: true, id: categoryId }
+}
+
+/** Its products are kept and become uncategorised (category_id is set null). */
+export async function deleteCategory(categoryId: string): Promise<ActionResult> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return auth
+  const { supabase } = auth
+
+  // Read before deleting: afterwards the link from these products is gone.
+  const { data: orphans } = await supabase.from('products').select('id').eq('category_id', categoryId)
+
+  const { data: deleted, error } = await supabase
+    .from('categories')
+    .delete()
+    .eq('id', categoryId)
+    .select('id')
+    .maybeSingle()
+
+  if (error) {
+    console.error('Error deleting category:', error)
+    return { error: 'Failed to delete category' }
+  }
+  if (!deleted) return { error: 'Category not found' }
+
+  await reembedCategoryProducts(supabase, null, (orphans ?? []).map((p) => p.id))
+  revalidateCategories()
   return { success: true }
 }
