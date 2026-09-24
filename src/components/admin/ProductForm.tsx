@@ -108,6 +108,9 @@ export function ProductForm({
             min="0"
             defaultValue={product?.inventory_count ?? 0}
           />
+          <p className="text-xs text-muted-foreground">
+            Available to sell. Units in open checkouts are already taken out.
+          </p>
         </div>
 
         <div className="space-y-2">

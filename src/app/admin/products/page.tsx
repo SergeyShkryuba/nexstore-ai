@@ -7,15 +7,22 @@ import { buttonVariants } from '@/components/ui/button'
 import { DeleteProductButton } from '@/components/admin/DeleteProductButton'
 import { formatPrice } from '@/lib/format'
 import { stockLabel, stockLevel } from '@/lib/stock'
+import { heldUnitsByProduct } from '@/lib/reservations'
 import { cn } from '@/lib/utils'
 
 export default async function AdminProductsPage() {
   const supabase = await createClient()
 
-  const { data: products } = await supabase
-    .from('products')
-    .select('id, title, slug, description, price, inventory_count, image_urls, category:categories(name)')
-    .order('created_at', { ascending: false })
+  const [{ data: products }, { data: reservations }] = await Promise.all([
+    supabase
+      .from('products')
+      .select('id, title, slug, description, price, inventory_count, image_urls, category:categories(name)')
+      .order('created_at', { ascending: false }),
+    // Units in open checkouts are already out of inventory_count; show them so
+    // the numbers add up for whoever edits stock.
+    supabase.from('stock_reservations').select('items').eq('status', 'held'),
+  ])
+  const held = heldUnitsByProduct(reservations)
 
   return (
     <div className="space-y-8">
@@ -41,7 +48,9 @@ export default async function AdminProductsPage() {
                   <th className="px-6 py-4 font-medium">Product</th>
                   <th className="px-6 py-4 font-medium">Category</th>
                   <th className="px-6 py-4 font-medium text-right">Price</th>
-                  <th className="px-6 py-4 font-medium">Stock</th>
+                  <th className="px-6 py-4 font-medium">
+                    Stock <span className="sr-only">(available to sell)</span>
+                  </th>
                   <th className="px-6 py-4 font-medium text-right">
                     <span className="sr-only">Actions</span>
                   </th>
@@ -98,6 +107,11 @@ export default async function AdminProductsPage() {
                             {stockLabel(product.inventory_count)}
                           </span>
                         )}
+                        {held.get(product.id) ? (
+                          <div className="text-xs text-muted-foreground">
+                            +{held.get(product.id)} in open checkouts
+                          </div>
+                        ) : null}
                       </td>
                       <td className="px-6 py-4 text-right whitespace-nowrap">
                         <Link

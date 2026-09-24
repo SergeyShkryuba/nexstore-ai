@@ -1,33 +1,22 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { orderItemsFromLineItems, shippingFromSession } from '@/lib/orders'
+import { DELAYED_PAYMENT_HOLD_DAYS, isUuidShaped, reservationIdFrom } from '@/lib/reservations'
+import { createServiceClient } from '@/utils/supabase/service'
 
 export const runtime = 'nodejs'
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET
 
-const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-/**
- * Webhooks arrive without a user session, so they need the service-role key to
- * write past RLS. Falling back to the anon key (as an earlier version did) only
- * produced silent write failures, so this now refuses to run without it.
- */
-function getServiceClient(): SupabaseClient | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !serviceKey) return null
-  return createClient(url, serviceKey, { auth: { persistSession: false } })
-}
-
 export async function POST(req: Request) {
   if (!stripe || !endpointSecret) {
     return NextResponse.json({ error: 'Stripe webhook is not configured' }, { status: 503 })
   }
 
-  const supabase = getServiceClient()
+  // Webhooks arrive without a user session: writes need the service role.
+  const supabase = createServiceClient()
   if (!supabase) {
     console.error('Webhook: SUPABASE_SERVICE_ROLE_KEY is not set; refusing to process events')
     return NextResponse.json({ error: 'Server is not configured' }, { status: 503 })
@@ -49,20 +38,31 @@ export async function POST(req: Request) {
   }
 
   try {
-    // Card payments are paid by `completed`. Delayed methods (SEPA debit and
-    // the like) complete unpaid and confirm later with `async_payment_succeeded`
-    // — ignoring that event used to lose those orders entirely.
-    if (
-      event.type === 'checkout.session.completed' ||
-      event.type === 'checkout.session.async_payment_succeeded'
-    ) {
-      await recordPaidSession(supabase, stripe, event.data.object)
+    switch (event.type) {
+      // Cards are paid on `completed`. Delayed methods (SEPA debit) complete
+      // unpaid, keep their stock held, and settle with one of the async events.
+      case 'checkout.session.completed':
+        if (event.data.object.payment_status === 'paid') {
+          await recordPaidSession(supabase, stripe, event.data.object)
+        } else {
+          await holdForDelayedPayment(supabase, event.data.object)
+        }
+        break
+      case 'checkout.session.async_payment_succeeded':
+        await recordPaidSession(supabase, stripe, event.data.object)
+        break
+      // Not paid, and never will be: the units go back on sale.
+      case 'checkout.session.async_payment_failed':
+      case 'checkout.session.expired':
+        await releaseStock(supabase, event.data.object)
+        break
     }
     return NextResponse.json({ received: true })
   } catch (error) {
     console.error('Webhook handler error:', error)
-    // 500 makes Stripe retry. Safe: record_paid_order is a single transaction
-    // (nothing half-written survives a failure) and idempotent per session.
+    // 500 makes Stripe retry. Safe: every database step below is a single
+    // transaction and idempotent, so a retry can neither duplicate an order
+    // nor return or take stock twice.
     return NextResponse.json({ error: 'Failed to process event' }, { status: 500 })
   }
 }
@@ -89,17 +89,38 @@ async function recordPaidSession(
     expand: ['data.price.product'],
   })
 
-  // Order, lines and stock decrement in one transaction: all or nothing.
+  // Order, lines and stock in one transaction: all or nothing. A held
+  // reservation becomes the sale; without one the stock is taken now.
   const { error } = await supabase.rpc('record_paid_order', {
     p_session_id: session.id,
     // Set by our checkout route; anything not shaped like an id would fail the
     // uuid cast on every retry, so it is dropped rather than passed through.
-    p_user_id: UUID_SHAPE.test(session.client_reference_id ?? '') ? session.client_reference_id : null,
+    p_user_id: isUuidShaped(session.client_reference_id) ? session.client_reference_id : null,
     p_email: session.customer_details?.email ?? null,
     p_total: (session.amount_total ?? 0) / 100,
     p_shipping: shippingFromSession(session),
     p_items: orderItemsFromLineItems(lineItems.data),
+    p_reservation_id: reservationIdFrom(session.metadata),
   })
 
   if (error) throw new Error(`record_paid_order failed: ${error.message}`)
+}
+
+async function holdForDelayedPayment(supabase: SupabaseClient, session: Stripe.Checkout.Session) {
+  const reservationId = reservationIdFrom(session.metadata)
+  if (!reservationId) return
+  const until = new Date(Date.now() + DELAYED_PAYMENT_HOLD_DAYS * 24 * 60 * 60 * 1000)
+  const { error } = await supabase.rpc('extend_reservation', {
+    p_reservation_id: reservationId,
+    p_until: until.toISOString(),
+  })
+  if (error) throw new Error(`extend_reservation failed: ${error.message}`)
+}
+
+async function releaseStock(supabase: SupabaseClient, session: Stripe.Checkout.Session) {
+  const reservationId = reservationIdFrom(session.metadata)
+  // Sessions from before reservations existed hold nothing to release.
+  if (!reservationId) return
+  const { error } = await supabase.rpc('release_reservation', { p_reservation_id: reservationId })
+  if (error) throw new Error(`release_reservation failed: ${error.message}`)
 }

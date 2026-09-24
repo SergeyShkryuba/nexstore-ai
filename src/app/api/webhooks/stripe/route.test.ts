@@ -27,6 +27,7 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'service'
 const { POST } = await import('./route')
 
 const USER_ID = '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b'
+const RESERVATION = '0b8e7c6d-5a4f-4e3d-9c2b-1a0f9e8d7c6b'
 
 function session(overrides: Record<string, unknown> = {}) {
   return {
@@ -74,11 +75,49 @@ describe('Stripe webhook', () => {
       p_total: 59.98,
       p_shipping: { name: 'Ana', phone: '+34 600', address: { city: 'Barcelona', country: 'ES' } },
       p_items: [{ product_id: 'p1', quantity: 2, unit_price: 29.99 }],
+      p_reservation_id: null,
     })
+  })
+
+  it('passes the checkout reservation on, so the held units become the sale', async () => {
+    await deliver('checkout.session.completed', session({ metadata: { reservation_id: RESERVATION } }))
+    expect(rpc.mock.calls[0][1].p_reservation_id).toBe(RESERVATION)
+  })
+
+  it('keeps the units held while a delayed payment settles', async () => {
+    await deliver(
+      'checkout.session.completed',
+      session({ payment_status: 'unpaid', metadata: { reservation_id: RESERVATION } }),
+    )
+    expect(rpc).toHaveBeenCalledTimes(1)
+    expect(rpc.mock.calls[0][0]).toBe('extend_reservation')
+    expect(rpc.mock.calls[0][1].p_reservation_id).toBe(RESERVATION)
+    expect(new Date(rpc.mock.calls[0][1].p_until).getTime()).toBeGreaterThan(Date.now() + 13 * 86_400_000)
+  })
+
+  it.each(['checkout.session.expired', 'checkout.session.async_payment_failed'])(
+    'puts the units back on %s',
+    async (type) => {
+      const res = await deliver(type, session({ payment_status: 'unpaid', metadata: { reservation_id: RESERVATION } }))
+      expect(res.status).toBe(200)
+      expect(rpc).toHaveBeenCalledWith('release_reservation', { p_reservation_id: RESERVATION })
+    },
+  )
+
+  it('has nothing to release for a session without a reservation', async () => {
+    await deliver('checkout.session.expired', session({ payment_status: 'unpaid' }))
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('asks Stripe to retry when releasing fails, rather than losing the units', async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: 'connection reset' } })
+    const res = await deliver('checkout.session.expired', session({ metadata: { reservation_id: RESERVATION } }))
+    expect(res.status).toBe(500)
   })
 
   it('waits for delayed payment methods, then records on async success', async () => {
     await deliver('checkout.session.completed', session({ payment_status: 'unpaid' }))
+    // No reservation on this session, so nothing to extend either.
     expect(rpc).not.toHaveBeenCalled()
 
     await deliver('checkout.session.async_payment_succeeded', session())

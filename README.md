@@ -25,10 +25,15 @@ TypeScript, Tailwind CSS v4 and Supabase, with Stripe Checkout for payments.
 - **Catalogue browsing** — sort, price range and in-stock filters kept in the
   URL; product pages with an image gallery.
 - **Cart** — client-side, persisted to `localStorage`, hydration-safe.
-- **Checkout** — Stripe Checkout Session. **Prices are re-read from the database
-  server-side**; the client only sends product ids and quantities.
-- **Orders** — written by the Stripe webhook using the service-role key,
-  idempotent on `stripe_session_id`, with stock decremented after payment.
+- **Checkout** — Stripe Checkout Session with EU shipping address and phone.
+  **Prices are re-read from the database server-side**; the client only sends
+  product ids and quantities.
+- **Stock reservations** — checkout holds the units for the life of the Stripe
+  session, so two buyers cannot both get the last one. Paying turns the hold
+  into the sale; an expired or failed payment puts the units back.
+- **Orders** — written by the Stripe webhook in one Postgres transaction (order,
+  lines, stock), idempotent on `stripe_session_id`, so a retried webhook can
+  neither duplicate an order nor move stock twice.
 - **Auth** — Supabase email/password, session refreshed in `src/proxy.ts`.
 - **Wishlist & reviews** — per-user, enforced by Row Level Security. Product
   rating is computed from the reviews that actually exist.
@@ -128,6 +133,14 @@ stripe listen --forward-to localhost:3000/api/webhooks/stripe
 
 and put the printed signing secret in `STRIPE_WEBHOOK_SECRET`.
 
+In production, point a webhook endpoint at `/api/webhooks/stripe` with these
+events — the last three are what put reserved stock back on sale:
+
+- `checkout.session.completed`
+- `checkout.session.async_payment_succeeded`
+- `checkout.session.async_payment_failed`
+- `checkout.session.expired`
+
 ## Scripts
 
 | Command | What it does |
@@ -166,11 +179,12 @@ Listed rather than hidden:
   Russian or Spanish query falls back to keyword matching in practice.
 - The similarity thresholds were calibrated on a 10-product catalogue; a much
   larger or different catalogue should be re-checked.
-- No order management UI in the admin panel (orders are visible in `/profile`).
-- Stock is decremented after payment, not reserved at checkout, so a race
-  between two buyers of the last unit is possible.
-- No end-to-end tests; the Stripe webhook is covered by manual `stripe listen`
-  testing rather than automated tests.
+- Units in an open checkout are unavailable to others for up to ~36 minutes
+  (Stripe's minimum session life plus a margin) if the shopper walks away.
+- The reservation SQL is exercised against a real database by hand; the unit
+  tests cover the TypeScript around it, not the functions themselves.
+- No end-to-end browser tests; the Stripe flow is tested with mocked Stripe
+  and Supabase clients plus manual test-mode purchases.
 
 ## Licence
 

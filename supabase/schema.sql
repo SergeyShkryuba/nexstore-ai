@@ -369,23 +369,177 @@ create policy "Admins delete product images"
   on storage.objects for delete to authenticated
   using (bucket_id = 'product-images' and public.is_admin());
 
--- ========================== Paid orders ====================================
--- Records a paid Checkout Session as one transaction: the order, its lines and
--- the stock decrement all happen, or none do. The webhook used to do these as
--- separate requests, so a failure after the order insert left an order with no
--- lines, and Stripe's retry then saw "already recorded" and stopped.
+-- ================= Stock reservations and paid orders ======================
+-- Checkout reserves stock before sending the shopper to Stripe, so two people
+-- cannot both buy the last unit.
 --
--- Idempotent: a repeat delivery of the same session hits the unique
--- stripe_session_id, inserts nothing and returns null.
+--   reserve_stock()           checkout: takes the units off inventory_count, or
+--                             fails as a whole if any line is short
+--   record_paid_order()       webhook, paid: turns the reservation into a sale
+--   release_reservation()     webhook, expired or failed: puts the units back
+--   extend_reservation()      webhook, delayed method (SEPA) still pending
+--   release_expired_reservations()  safety net for a lost webhook
+--
+-- inventory_count is therefore stock that can still be sold; units held in
+-- open checkouts are already taken out of it. Every function is idempotent:
+-- a reservation leaves 'held' exactly once, so a repeated webhook can neither
+-- return stock twice nor sell it twice.
+
+create table if not exists stock_reservations (
+  id uuid primary key default gen_random_uuid(),
+  status text not null default 'held' check (status in ('held', 'converted', 'released')),
+  -- [{ "product_id": uuid, "quantity": int }]
+  items jsonb not null,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_stock_reservations_held
+  on stock_reservations (expires_at) where status = 'held';
+
+alter table stock_reservations enable row level security;
+
+-- Written only through the functions below (service role). Admins may read,
+-- to see how many units sit in open checkouts.
+drop policy if exists "Admins read reservations" on stock_reservations;
+create policy "Admins read reservations"
+  on stock_reservations for select using (public.is_admin());
+
+-- Puts a held reservation's units back. False if it was not held (already
+-- released, converted, or unknown), which makes repeats harmless.
+create or replace function public.release_reservation(p_reservation_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_items jsonb;
+  v_item jsonb;
+begin
+  update stock_reservations
+  set status = 'released', updated_at = now()
+  where id = p_reservation_id and status = 'held'
+  returning items into v_items;
+
+  if v_items is null then
+    return false;
+  end if;
+
+  for v_item in select * from jsonb_array_elements(v_items) loop
+    update products
+    set inventory_count = inventory_count + (v_item ->> 'quantity')::integer
+    where id = (v_item ->> 'product_id')::uuid;
+  end loop;
+
+  return true;
+end;
+$$;
+
+create or replace function public.release_expired_reservations()
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_id uuid;
+  v_count integer := 0;
+begin
+  for v_id in
+    select id from stock_reservations
+    where status = 'held' and expires_at < now()
+    for update skip locked
+  loop
+    if public.release_reservation(v_id) then
+      v_count := v_count + 1;
+    end if;
+  end loop;
+  return v_count;
+end;
+$$;
+
+-- All lines or none. The conditional UPDATE locks each product row, so
+-- concurrent checkouts for the same product queue up instead of overselling.
+-- Raises 'insufficient_stock' with the product id in the detail.
+create or replace function public.reserve_stock(p_items jsonb, p_ttl_seconds integer)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_item jsonb;
+  v_product_id uuid;
+  v_quantity integer;
+  v_reservation_id uuid;
+begin
+  if p_items is null or jsonb_array_length(p_items) = 0 then
+    raise exception 'empty_reservation';
+  end if;
+
+  -- Stock stuck in abandoned checkouts comes back before we count it.
+  perform public.release_expired_reservations();
+
+  for v_item in select * from jsonb_array_elements(p_items) loop
+    v_product_id := (v_item ->> 'product_id')::uuid;
+    v_quantity := (v_item ->> 'quantity')::integer;
+    if v_quantity is null or v_quantity < 1 then
+      raise exception 'invalid_quantity';
+    end if;
+
+    update products
+    set inventory_count = inventory_count - v_quantity
+    where id = v_product_id and inventory_count >= v_quantity;
+
+    if not found then
+      raise exception 'insufficient_stock' using detail = v_product_id::text;
+    end if;
+  end loop;
+
+  insert into stock_reservations (items, expires_at)
+  values (p_items, now() + make_interval(secs => greatest(p_ttl_seconds, 60)))
+  returning id into v_reservation_id;
+
+  return v_reservation_id;
+end;
+$$;
+
+-- Keeps the units held while a delayed payment method (SEPA debit) settles.
+create or replace function public.extend_reservation(p_reservation_id uuid, p_until timestamptz)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update stock_reservations
+  set expires_at = greatest(expires_at, p_until), updated_at = now()
+  where id = p_reservation_id and status = 'held';
+  return found;
+end;
+$$;
+
+-- Records a paid Checkout Session as one transaction: the order, its lines and
+-- the stock all change together, or nothing does. Idempotent: a repeat
+-- delivery hits the unique stripe_session_id, changes nothing, returns null.
+--
+-- Stock: a held reservation becomes the sale (its units were already taken).
+-- Without one (an older checkout, or a reservation released before the
+-- payment landed) the units are taken now instead.
 -- A buyer or product deleted since checkout is stored as null rather than
 -- failing the insert, which Stripe would otherwise retry for days.
+drop function if exists public.record_paid_order(text, uuid, text, numeric, jsonb, jsonb);
+
 create or replace function public.record_paid_order(
   p_session_id text,
   p_user_id uuid,
   p_email text,
   p_total numeric,
   p_shipping jsonb,
-  p_items jsonb
+  p_items jsonb,
+  p_reservation_id uuid default null
 )
 returns uuid
 language plpgsql
@@ -397,6 +551,7 @@ declare
   v_item jsonb;
   v_product_id uuid;
   v_quantity integer;
+  v_reserved boolean := false;
 begin
   insert into orders (user_id, total_amount, status, stripe_session_id, customer_email, shipping_address)
   values (
@@ -410,6 +565,13 @@ begin
     return null;  -- already recorded by an earlier delivery
   end if;
 
+  if p_reservation_id is not null then
+    update stock_reservations
+    set status = 'converted', updated_at = now()
+    where id = p_reservation_id and status = 'held';
+    v_reserved := found;
+  end if;
+
   for v_item in select * from jsonb_array_elements(coalesce(p_items, '[]'::jsonb)) loop
     v_product_id := (select id from products where id = (v_item ->> 'product_id')::uuid);
     v_quantity := (v_item ->> 'quantity')::integer;
@@ -417,7 +579,7 @@ begin
     insert into order_items (order_id, product_id, quantity, unit_price)
     values (v_order_id, v_product_id, v_quantity, (v_item ->> 'unit_price')::numeric);
 
-    if v_product_id is not null then
+    if v_product_id is not null and not v_reserved then
       update products
       set inventory_count = greatest(0, inventory_count - v_quantity)
       where id = v_product_id;
@@ -428,6 +590,14 @@ begin
 end;
 $$;
 
--- Only the webhook (service role) may record payments.
-revoke all on function public.record_paid_order(text, uuid, text, numeric, jsonb, jsonb) from public, anon, authenticated;
-grant execute on function public.record_paid_order(text, uuid, text, numeric, jsonb, jsonb) to service_role;
+-- Only the server (service role) may reserve, release or record payments.
+revoke all on function public.reserve_stock(jsonb, integer) from public, anon, authenticated;
+revoke all on function public.release_reservation(uuid) from public, anon, authenticated;
+revoke all on function public.release_expired_reservations() from public, anon, authenticated;
+revoke all on function public.extend_reservation(uuid, timestamptz) from public, anon, authenticated;
+revoke all on function public.record_paid_order(text, uuid, text, numeric, jsonb, jsonb, uuid) from public, anon, authenticated;
+grant execute on function public.reserve_stock(jsonb, integer) to service_role;
+grant execute on function public.release_reservation(uuid) to service_role;
+grant execute on function public.release_expired_reservations() to service_role;
+grant execute on function public.extend_reservation(uuid, timestamptz) to service_role;
+grant execute on function public.record_paid_order(text, uuid, text, numeric, jsonb, jsonb, uuid) to service_role;
