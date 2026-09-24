@@ -1,7 +1,8 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { LayoutDashboard, Package, ShoppingCart, Users, ArrowLeft } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
+import { AdminNav } from '@/components/admin/AdminNav'
 
 export default async function AdminLayout({
   children,
@@ -27,51 +28,25 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-muted/40">
-      {/* Admin Sidebar */}
-      <aside className="w-64 bg-background border-r hidden md:block">
+    <div className="flex min-h-screen flex-col md:flex-row bg-muted/40">
+      <aside className="w-64 shrink-0 bg-background border-r hidden md:block">
         <div className="p-6">
-          <Link href="/" className="flex items-center space-x-2 text-muted-foreground hover:text-foreground mb-8">
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to Store</span>
+          <Link href="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-8">
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+            Back to store
           </Link>
-          <h2 className="text-xl font-bold tracking-tight mb-6">Admin Panel</h2>
-          <nav className="space-y-2">
-            <Link 
-              href="/admin" 
-              className="flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-muted transition-colors"
-            >
-              <LayoutDashboard className="w-5 h-5" />
-              <span>Overview</span>
-            </Link>
-            <Link 
-              href="/admin/products" 
-              className="flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-muted transition-colors"
-            >
-              <Package className="w-5 h-5" />
-              <span>Products</span>
-            </Link>
-            <Link 
-              href="/admin" 
-              className="flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-muted transition-colors text-muted-foreground opacity-50 cursor-not-allowed"
-            >
-              <ShoppingCart className="w-5 h-5" />
-              <span>Orders (Coming Soon)</span>
-            </Link>
-            <Link 
-              href="/admin" 
-              className="flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-muted transition-colors text-muted-foreground opacity-50 cursor-not-allowed"
-            >
-              <Users className="w-5 h-5" />
-              <span>Users (Coming Soon)</span>
-            </Link>
-          </nav>
+          <h2 className="text-xl font-bold tracking-tight mb-6">Admin panel</h2>
+          <AdminNav orientation="vertical" />
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        <div className="p-8 max-w-6xl mx-auto">
+      {/* Small screens: the sidebar collapses into a row of tabs. */}
+      <div className="border-b bg-background px-4 py-2 md:hidden">
+        <AdminNav orientation="horizontal" />
+      </div>
+
+      <main className="flex-1 min-w-0 overflow-auto">
+        <div className="p-4 sm:p-8 max-w-6xl mx-auto">
           {children}
         </div>
       </main>
