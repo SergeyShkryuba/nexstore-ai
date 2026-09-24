@@ -87,3 +87,24 @@ export function slugify(title: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)+/g, '')
 }
+
+export const categorySchema = z.object({
+  name: z.string().trim().min(2, 'Name is required').max(60),
+  description: z.string().trim().max(300).optional().default(''),
+  image_url: z
+    .string()
+    .trim()
+    .optional()
+    .default('')
+    .refine((url) => url === '' || isAllowedImageUrl(url), {
+      message: 'The image must be uploaded here or come from images.unsplash.com',
+    }),
+})
+
+export function parseCategoryForm(formData: FormData) {
+  return categorySchema.safeParse({
+    name: formData.get('name'),
+    description: formData.get('description') ?? '',
+    image_url: formData.get('image_url') ?? '',
+  })
+}

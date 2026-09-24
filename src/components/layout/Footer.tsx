@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Code, Lock } from 'lucide-react'
-import { createPublicClient } from '@/utils/supabase/public'
+import type { NavCategory } from '@/lib/nav-categories'
 
 const REPO_URL = 'https://github.com/SergeyShkryuba/nexstore-ai'
 
@@ -16,16 +16,6 @@ const HELP_LINKS = [
   { href: '/terms', label: 'Terms' },
   { href: '/about', label: 'About this project' },
 ]
-
-async function loadCategories() {
-  // The footer must never take a page down: no categories is a fine fallback.
-  try {
-    const { data } = await createPublicClient().from('categories').select('name, slug').order('name')
-    return data ?? []
-  } catch {
-    return []
-  }
-}
 
 function FooterColumn({ title, links }: { title: string; links: { href: string; label: string }[] }) {
   return (
@@ -44,12 +34,10 @@ function FooterColumn({ title, links }: { title: string; links: { href: string; 
   )
 }
 
-export async function Footer() {
-  const categories = await loadCategories()
-
+export function Footer({ categories }: { categories: NavCategory[] }) {
   const shopLinks = [
     { href: '/categories/all', label: 'All products' },
-    ...categories.map((c) => ({ href: `/categories/${c.slug}`, label: c.name as string })),
+    ...categories.map((c) => ({ href: `/categories/${c.slug}`, label: c.name })),
     { href: '/categories/all?sort=price-asc&max=50&stock=1', label: 'Under €50' },
   ]
 

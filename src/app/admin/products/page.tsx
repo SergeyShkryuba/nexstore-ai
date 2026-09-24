@@ -4,7 +4,8 @@ import { Pencil, Plus } from 'lucide-react'
 import { createClient } from '@/utils/supabase/server'
 import { Card, CardContent } from '@/components/ui/card'
 import { buttonVariants } from '@/components/ui/button'
-import { DeleteProductButton } from '@/components/admin/DeleteProductButton'
+import { ConfirmDeleteButton } from '@/components/admin/ConfirmDeleteButton'
+import { deleteProduct } from '@/app/actions/admin'
 import { formatPrice } from '@/lib/format'
 import { stockLabel, stockLevel } from '@/lib/stock'
 import { heldUnitsByProduct } from '@/lib/reservations'
@@ -121,7 +122,12 @@ export default async function AdminProductsPage() {
                         >
                           <Pencil />
                         </Link>
-                        <DeleteProductButton productId={product.id} title={product.title} />
+                        <ConfirmDeleteButton
+                          action={deleteProduct.bind(null, product.id)}
+                          name={product.title}
+                          question="Delete this product?"
+                          consequence="it disappears from the store and from search. Past orders keep their line items."
+                        />
                       </td>
                     </tr>
                   )
