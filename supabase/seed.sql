@@ -5,14 +5,18 @@
 -- that orders already reference.
 -- ---------------------------------------------------------------------------
 
-insert into categories (id, name, slug, description) values
-  ('11111111-1111-1111-1111-111111111111', 'Electronics', 'electronics', 'Gadgets and electronic devices'),
-  ('22222222-2222-2222-2222-222222222222', 'Clothing',    'clothing',    'Apparel and accessories'),
-  ('33333333-3333-3333-3333-333333333333', 'Smart Home',  'smart-home',  'Home automation devices')
+insert into categories (id, name, slug, description, image_url) values
+  ('11111111-1111-1111-1111-111111111111', 'Electronics', 'electronics', 'Gadgets and electronic devices',
+   'https://images.unsplash.com/photo-1468495244123-6c6c332eeece?w=1200&q=80'),
+  ('22222222-2222-2222-2222-222222222222', 'Clothing',    'clothing',    'Apparel and accessories',
+   'https://images.unsplash.com/photo-1644525962118-27c390e895f6?w=1200&q=80'),
+  ('33333333-3333-3333-3333-333333333333', 'Smart Home',  'smart-home',  'Home automation devices',
+   'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=1200&q=80')
 on conflict (id) do update
   set name = excluded.name,
       slug = excluded.slug,
-      description = excluded.description;
+      description = excluded.description,
+      image_url = excluded.image_url;
 
 insert into products (id, category_id, title, slug, description, price, inventory_count, image_urls, attributes) values
   -- Electronics
@@ -25,7 +29,7 @@ insert into products (id, category_id, title, slug, description, price, inventor
   ('00000000-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111',
    '4K Action Camera', '4k-action-cam',
    'Rugged, waterproof action camera capable of shooting 4K video at 60fps. Includes mounting accessories.',
-   199.50, 20, array['https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=800&q=80', 'https://images.unsplash.com/photo-1571190144364-1da84d9ca448?w=800&q=80', 'https://images.unsplash.com/photo-1685615359827-aa31d97578e7?w=800&q=80', 'https://images.unsplash.com/photo-1686226043803-51aea0da1c2c?w=800&q=80'],
+   199.50, 3, array['https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=800&q=80', 'https://images.unsplash.com/photo-1571190144364-1da84d9ca448?w=800&q=80', 'https://images.unsplash.com/photo-1685615359827-aa31d97578e7?w=800&q=80', 'https://images.unsplash.com/photo-1686226043803-51aea0da1c2c?w=800&q=80'],
    '{"resolution": "4K", "waterproof": "Up to 10m", "color": "Grey"}'::jsonb),
 
   ('00000000-0000-0000-0000-000000000003', '11111111-1111-1111-1111-111111111111',
@@ -69,7 +73,7 @@ insert into products (id, category_id, title, slug, description, price, inventor
   ('00000000-0000-0000-0000-000000000007', '33333333-3333-3333-3333-333333333333',
    'Wi-Fi Smart Thermostat', 'smart-thermostat',
    'Energy-saving smart thermostat that learns your habits and can be controlled via smartphone.',
-   199.00, 30, array['https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=800&q=80', 'https://images.unsplash.com/photo-1545259741-2ea3ebf61fa3?w=800&q=80', 'https://images.unsplash.com/photo-1545259742-b4fd8fea67e4?w=800&q=80'],
+   199.00, 0, array['https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=800&q=80', 'https://images.unsplash.com/photo-1545259741-2ea3ebf61fa3?w=800&q=80', 'https://images.unsplash.com/photo-1545259742-b4fd8fea67e4?w=800&q=80'],
    '{"connectivity": "Wi-Fi", "power": "C-wire required", "color": "White"}'::jsonb),
 
   ('00000000-0000-0000-0000-00000000000a', '33333333-3333-3333-3333-333333333333',

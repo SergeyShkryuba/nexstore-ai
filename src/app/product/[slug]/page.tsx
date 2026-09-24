@@ -7,6 +7,8 @@ import { Star, Shield, Truck, RotateCcw } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { createPublicClient } from '@/utils/supabase/public'
 import { averageRating, formatPrice } from '@/lib/format'
+import { stockLabel, stockLevel } from '@/lib/stock'
+import { cn } from '@/lib/utils'
 
 import type { Metadata } from 'next'
 
@@ -77,6 +79,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   // empty.
   const reviewList = reviews ?? []
   const rating = averageRating(reviewList.map((r) => r.rating as number))
+  const stock = stockLevel(product.inventory_count)
 
   return (
     <div className="container mx-auto px-4 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -117,10 +120,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
             {formatPrice(product.price)}
           </div>
 
-          <p className="text-sm text-muted-foreground">
-            {product.inventory_count > 0
-              ? `${product.inventory_count} in stock`
-              : 'Currently out of stock'}
+          <p className="flex items-center gap-2 text-sm font-medium">
+            <span
+              aria-hidden="true"
+              className={cn(
+                'size-2 rounded-full',
+                stock === 'out' ? 'bg-destructive' : stock === 'low' ? 'bg-amber-500' : 'bg-green-500',
+              )}
+            />
+            <span className={stock === 'low' ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}>
+              {stockLabel(product.inventory_count)}
+            </span>
           </p>
           
           <p className="text-lg text-muted-foreground leading-relaxed">
