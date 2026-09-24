@@ -176,6 +176,13 @@ as $$
   where id = p_product_id;
 $$;
 
+-- Postgres lets PUBLIC execute new functions, and Supabase exposes public-schema
+-- functions over its REST API. This one is SECURITY DEFINER, so with the anon
+-- key (shipped in every page) anyone could zero the stock of any product.
+-- Kept for older deployments of the webhook; record_paid_order() replaces it.
+revoke all on function public.decrement_inventory(uuid, integer) from public, anon, authenticated;
+grant execute on function public.decrement_inventory(uuid, integer) to service_role;
+
 -- ===================== Row Level Security ==================================
 -- Every table below has RLS enabled. `order_items` in particular was previously
 -- left unprotected, which exposed every line item to the anon key.
@@ -211,9 +218,10 @@ drop policy if exists "Users can view their own orders" on orders;
 create policy "Users can view their own orders"
   on orders for select using (auth.uid() = user_id or public.is_admin());
 
+-- No insert policy on purpose. Orders are created only by the Stripe webhook
+-- (service role). The policy that used to be here let any signed-in user insert
+-- an order for themselves — status 'paid', any total — without paying.
 drop policy if exists "Users can insert their own orders" on orders;
-create policy "Users can insert their own orders"
-  on orders for insert with check (auth.uid() = user_id);
 
 drop policy if exists "Order items follow their order" on order_items;
 create policy "Order items follow their order"
@@ -235,6 +243,12 @@ create policy "Profiles are viewable by everyone"
 drop policy if exists "Users can update their own profile" on profiles;
 create policy "Users can update their own profile"
   on profiles for update using (auth.uid() = id) with check (auth.uid() = id);
+
+-- The policy above limits which ROW a user may update, not which COLUMNS, so on
+-- its own it let anyone set their own role to 'admin'. Users may change their
+-- name and avatar only; roles are granted from the SQL editor.
+revoke update on profiles from anon, authenticated;
+grant update (full_name, avatar_url) on profiles to authenticated;
 
 -- Wishlist: strictly private.
 drop policy if exists "Users can view their own wishlist" on wishlist;
@@ -261,6 +275,11 @@ create policy "Users can insert their own reviews"
 drop policy if exists "Users can update their own reviews" on reviews;
 create policy "Users can update their own reviews"
   on reviews for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Same row-versus-column gap as profiles: without this a user could move their
+-- review onto another product. Only the rating and the text are editable.
+revoke update on reviews from anon, authenticated;
+grant update (rating, comment) on reviews to authenticated;
 
 drop policy if exists "Users can delete their own reviews" on reviews;
 create policy "Users can delete their own reviews"
@@ -349,3 +368,66 @@ drop policy if exists "Admins delete product images" on storage.objects;
 create policy "Admins delete product images"
   on storage.objects for delete to authenticated
   using (bucket_id = 'product-images' and public.is_admin());
+
+-- ========================== Paid orders ====================================
+-- Records a paid Checkout Session as one transaction: the order, its lines and
+-- the stock decrement all happen, or none do. The webhook used to do these as
+-- separate requests, so a failure after the order insert left an order with no
+-- lines, and Stripe's retry then saw "already recorded" and stopped.
+--
+-- Idempotent: a repeat delivery of the same session hits the unique
+-- stripe_session_id, inserts nothing and returns null.
+-- A buyer or product deleted since checkout is stored as null rather than
+-- failing the insert, which Stripe would otherwise retry for days.
+create or replace function public.record_paid_order(
+  p_session_id text,
+  p_user_id uuid,
+  p_email text,
+  p_total numeric,
+  p_shipping jsonb,
+  p_items jsonb
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_order_id uuid;
+  v_item jsonb;
+  v_product_id uuid;
+  v_quantity integer;
+begin
+  insert into orders (user_id, total_amount, status, stripe_session_id, customer_email, shipping_address)
+  values (
+    (select id from auth.users where id = p_user_id),
+    p_total, 'paid', p_session_id, p_email, p_shipping
+  )
+  on conflict (stripe_session_id) do nothing
+  returning id into v_order_id;
+
+  if v_order_id is null then
+    return null;  -- already recorded by an earlier delivery
+  end if;
+
+  for v_item in select * from jsonb_array_elements(coalesce(p_items, '[]'::jsonb)) loop
+    v_product_id := (select id from products where id = (v_item ->> 'product_id')::uuid);
+    v_quantity := (v_item ->> 'quantity')::integer;
+
+    insert into order_items (order_id, product_id, quantity, unit_price)
+    values (v_order_id, v_product_id, v_quantity, (v_item ->> 'unit_price')::numeric);
+
+    if v_product_id is not null then
+      update products
+      set inventory_count = greatest(0, inventory_count - v_quantity)
+      where id = v_product_id;
+    end if;
+  end loop;
+
+  return v_order_id;
+end;
+$$;
+
+-- Only the webhook (service role) may record payments.
+revoke all on function public.record_paid_order(text, uuid, text, numeric, jsonb, jsonb) from public, anon, authenticated;
+grant execute on function public.record_paid_order(text, uuid, text, numeric, jsonb, jsonb) to service_role;

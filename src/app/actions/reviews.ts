@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 
 export async function addReview(formData: FormData) {
   const supabase = await createClient()
-  
+
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'You must be logged in to leave a review.' }
 
@@ -25,6 +25,8 @@ export async function addReview(formData: FormData) {
   })
 
   if (error) {
+    // unique (product_id, user_id): one review per person per product.
+    if (error.code === '23505') return { error: 'You have already reviewed this product.' }
     console.error('Error adding review:', error)
     return { error: 'Failed to add review.' }
   }
