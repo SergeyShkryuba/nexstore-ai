@@ -4,6 +4,8 @@ import { z } from 'zod'
 import { createClient } from '@/utils/supabase/server'
 import { siteUrl } from '@/lib/site'
 import { EU_COUNTRIES } from '@/lib/orders'
+import { CHECKOUT_TTL_SECONDS, RESERVATION_TTL_SECONDS, shortProductId } from '@/lib/reservations'
+import { createServiceClient } from '@/utils/supabase/service'
 
 export const runtime = 'nodejs'
 
@@ -127,13 +129,24 @@ export async function POST(req: Request) {
     const origin =
       req.headers.get('origin') ?? siteUrl
 
-    const session = await stripe.checkout.sessions.create({
+    // Hold the units before sending the shopper to pay. The check above is a
+    // fast, friendly answer; this is the one that cannot oversell.
+    const reservation = await reserveStock(requested, found)
+    if ('response' in reservation) return reservation.response
+
+    let session: Stripe.Checkout.Session
+    try {
+      session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items,
       success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/cart`,
       customer_email: user?.email,
       client_reference_id: user?.id,
+      // The session and the reservation end together; the webhook releases the
+      // units on `checkout.session.expired`.
+      expires_at: Math.floor(Date.now() / 1000) + CHECKOUT_TTL_SECONDS,
+      ...(reservation.id ? { metadata: { reservation_id: reservation.id } } : {}),
       // What the shipping page promises: free EU delivery in 2–5 business days.
       shipping_address_collection: { allowed_countries: [...EU_COUNTRIES] },
       phone_number_collection: { enabled: true },
@@ -150,10 +163,12 @@ export async function POST(req: Request) {
           },
         },
       ],
-    })
-
-    if (!session.url) {
-      return NextResponse.json({ error: 'Stripe did not return a checkout URL' }, { status: 502 })
+      })
+      if (!session.url) throw new Error('Stripe did not return a checkout URL')
+    } catch (error) {
+      // No session, so no webhook will ever release these units: do it now.
+      await releaseReservation(reservation.id)
+      throw error
     }
 
     return NextResponse.json({ url: session.url })
@@ -164,4 +179,58 @@ export async function POST(req: Request) {
     console.error('Stripe Checkout error:', error)
     return NextResponse.json({ error: 'Checkout failed. Please try again.' }, { status: 500 })
   }
+}
+
+type ReservationResult = { id: string | null } | { response: NextResponse }
+
+/**
+ * Takes the requested units off the shelf for the length of the checkout.
+ * `id: null` means reservations are not installed in this database yet
+ * (schema.sql not run): checkout then works as it did before, and the webhook
+ * takes the stock when payment lands.
+ */
+async function reserveStock(
+  requested: Map<string, number>,
+  products: Map<string, { title: unknown }>,
+): Promise<ReservationResult> {
+  const service = createServiceClient()
+  if (!service) {
+    console.error('Checkout: SUPABASE_SERVICE_ROLE_KEY is not set; cannot reserve stock')
+    return { response: NextResponse.json({ error: 'Checkout is temporarily unavailable' }, { status: 503 }) }
+  }
+
+  const { data, error } = await service.rpc('reserve_stock', {
+    p_items: [...requested.entries()].map(([product_id, quantity]) => ({ product_id, quantity })),
+    p_ttl_seconds: RESERVATION_TTL_SECONDS,
+  })
+  if (!error) return { id: data as string }
+
+  // Someone else took the last units between the check above and now.
+  const shortId = shortProductId(error)
+  if (shortId) {
+    const title = String(products.get(shortId)?.title ?? 'an item in your cart')
+    return {
+      response: NextResponse.json(
+        { error: `Not enough stock for: ${title}. Someone may be checking it out right now.` },
+        { status: 409 },
+      ),
+    }
+  }
+
+  // PGRST202: the function does not exist yet.
+  if (error.code === 'PGRST202') {
+    console.error('Checkout: reserve_stock() is missing; run supabase/schema.sql. Continuing without a reservation.')
+    return { id: null }
+  }
+
+  console.error('Checkout: stock reservation failed', error)
+  return { response: NextResponse.json({ error: 'Checkout failed. Please try again.' }, { status: 503 }) }
+}
+
+async function releaseReservation(reservationId: string | null) {
+  if (!reservationId) return
+  const { error } = (await createServiceClient()?.rpc('release_reservation', { p_reservation_id: reservationId })) ?? {}
+  // Not fatal: the reservation expires on its own and the next checkout or the
+  // daily cron releases it.
+  if (error) console.error('Checkout: could not release reservation', reservationId, error)
 }

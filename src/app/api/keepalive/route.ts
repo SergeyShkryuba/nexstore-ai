@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createPublicClient } from '@/utils/supabase/public'
+import { createServiceClient } from '@/utils/supabase/service'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -30,5 +31,16 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false }, { status: 502 })
   }
 
-  return NextResponse.json({ ok: true, categories: count, at: new Date().toISOString() })
+  // Safety net for stock reservations whose Stripe "expired" event never
+  // arrived. Only ever releases reservations past their expiry, so it is
+  // harmless even if the route were called by someone else.
+  let released: number | null = null
+  const service = createServiceClient()
+  if (service) {
+    const { data, error: releaseError } = await service.rpc('release_expired_reservations')
+    if (releaseError) console.error('Keep-alive: releasing expired reservations failed', releaseError)
+    else released = data as number
+  }
+
+  return NextResponse.json({ ok: true, categories: count, released, at: new Date().toISOString() })
 }
