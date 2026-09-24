@@ -586,9 +586,12 @@ begin
       set inventory_count = inventory_count + (v_item ->> 'quantity')::integer
       where id = (v_item ->> 'variant_id')::uuid;
     else
+      -- A product sold in sizes gets its total only from its sizes (trigger);
+      -- a line without a size (from before sizes existed) must not touch it.
       update products
       set inventory_count = inventory_count + (v_item ->> 'quantity')::integer
-      where id = (v_item ->> 'product_id')::uuid;
+      where id = (v_item ->> 'product_id')::uuid
+        and not exists (select 1 from product_variants where product_id = (v_item ->> 'product_id')::uuid);
     end if;
   end loop;
 
@@ -770,9 +773,12 @@ begin
         set inventory_count = greatest(0, inventory_count - v_quantity)
         where id = v_variant_id;
       else
+        -- Same rule as release_reservation: never write the total of a sized
+        -- product directly.
         update products
         set inventory_count = greatest(0, inventory_count - v_quantity)
-        where id = v_product_id;
+        where id = v_product_id
+          and not exists (select 1 from product_variants where product_id = v_product_id);
       end if;
     end if;
   end loop;
