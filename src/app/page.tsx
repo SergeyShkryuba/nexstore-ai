@@ -3,6 +3,7 @@ import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
 import { SearchSection } from '@/components/home/SearchSection'
 import { ProductCard } from '@/components/product/ProductCard'
+import { PhotoSection } from '@/components/home/PhotoSection'
 import { createPublicClient } from '@/utils/supabase/public'
 
 export const revalidate = 300
@@ -11,6 +12,12 @@ export const revalidate = 300
 const BUDGET = 50
 
 const CARD_FIELDS = 'id, title, slug, price, image_urls, inventory_count'
+
+/** Dark, edge-weighted photos: the props sit at the borders, the cards in the middle. */
+const SHELF_IMAGES = {
+  arrivals: 'https://images.unsplash.com/photo-1437419764061-2473afe69fc2?w=2000&q=70',
+  budget: 'https://images.unsplash.com/photo-1587424279915-db56f37265f3?w=2000&q=70',
+}
 
 export default async function Home() {
   const supabase = createPublicClient()
@@ -34,7 +41,9 @@ export default async function Home() {
       <SearchSection />
 
       {categories && categories.length > 0 && (
-        <section className="py-16">
+        <>
+        <SectionDivider />
+        <section className="mx-auto max-w-7xl">
           <h2 className="text-3xl font-bold mb-8">Shop by category</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {categories.map((category) => (
@@ -72,37 +81,58 @@ export default async function Home() {
             ))}
           </div>
         </section>
+        </>
       )}
 
       {featured && featured.length > 0 && (
-        <ProductShelf title="New arrivals" href="/categories/all" linkLabel="View all" products={featured} />
+        <>
+          <SectionDivider />
+          <ProductShelf
+            title="New arrivals"
+            href="/categories/all"
+            linkLabel="View all"
+            image={SHELF_IMAGES.arrivals}
+            products={featured}
+          />
+        </>
       )}
 
       {budgetPicks && budgetPicks.length > 0 && (
-        <ProductShelf
-          title={`Under €${BUDGET}`}
-          href={`/categories/all?sort=price-asc&max=${BUDGET}&stock=1`}
-          linkLabel={`All under €${BUDGET}`}
-          products={budgetPicks}
-        />
+        <>
+          <SectionDivider />
+          <ProductShelf
+            title={`Under €${BUDGET}`}
+            href={`/categories/all?sort=price-asc&max=${BUDGET}&stock=1`}
+            linkLabel={`All under €${BUDGET}`}
+            image={SHELF_IMAGES.budget}
+            products={budgetPicks}
+          />
+        </>
       )}
     </div>
   )
+}
+
+/** A barely-there rule between homepage sections. */
+function SectionDivider() {
+  return <hr className="my-12 border-border/40 md:my-16" />
 }
 
 function ProductShelf({
   title,
   href,
   linkLabel,
+  image,
   products,
 }: {
   title: string
   href: string
   linkLabel: string
+  image: string
   products: Parameters<typeof ProductCard>[0]['product'][]
 }) {
   return (
-    <section className="py-16 border-t">
+    <PhotoSection image={image} aria-label={title}>
       <div className="flex items-baseline justify-between mb-8">
         <h2 className="text-3xl font-bold">{title}</h2>
         <Link href={href} className="text-sm text-muted-foreground hover:text-foreground">
@@ -114,6 +144,6 @@ function ProductShelf({
           <ProductCard key={product.id} product={product} />
         ))}
       </div>
-    </section>
+    </PhotoSection>
   )
 }

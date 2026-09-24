@@ -43,7 +43,9 @@ export function ProductCard({ product }: ProductCardProps) {
   }
 
   return (
-    <Card className="relative overflow-hidden flex flex-col h-full group">
+    // py-0/gap-0: the card's default padding left an empty strip above the
+    // photo. Translucent with a blur, like the header, so section photos show.
+    <Card className="relative overflow-hidden flex flex-col h-full gap-0 py-0 group bg-background/70 backdrop-blur-md supports-[backdrop-filter]:bg-background/55">
       <Link href={`/product/${product.slug}`} className="block flex-1">
         <div className="aspect-square bg-muted relative overflow-hidden">
           {imageUrl ? (
@@ -83,7 +85,9 @@ export function ProductCard({ product }: ProductCardProps) {
         <WishlistButton productId={product.id} />
       </div>
 
-      <CardFooter className="p-4 pt-0 mt-auto">
+      {/* Even padding on all sides: pt-0 under the footer's border pressed the
+          button against the line while 16px sat below it. */}
+      <CardFooter className="mt-auto border-border/50 bg-transparent p-4">
         <Button className="w-full" onClick={handleAdd} disabled={soldOut}>
           <ShoppingCart className="w-4 h-4 mr-2" aria-hidden="true" />
           {soldOut ? 'Sold out' : 'Add to Cart'}

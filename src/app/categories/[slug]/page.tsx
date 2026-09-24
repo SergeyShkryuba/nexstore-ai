@@ -71,7 +71,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   const products: CatalogItem[] = data || []
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 *:mx-auto *:max-w-7xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">{isAll ? 'All Products' : category?.name}</h1>
         {category?.description && (
