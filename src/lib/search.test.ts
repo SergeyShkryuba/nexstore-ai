@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { rankProducts, tokenize, stem, extractMaxPrice, type SearchableProduct } from './search'
+import {
+  rankProducts,
+  tokenize,
+  stem,
+  extractMaxPrice,
+  removeBudget,
+  type SearchableProduct,
+} from './search'
 
 const CATEGORIES = {
   electronics: 'cat-electronics',
@@ -104,6 +111,22 @@ describe('extractMaxPrice', () => {
 
   it('returns null when no budget is mentioned', () => {
     expect(extractMaxPrice('wireless headphones')).toBeNull()
+  })
+
+  it('accepts a euro sign', () => {
+    expect(extractMaxPrice('sweater under €120')).toBe(120)
+  })
+})
+
+describe('removeBudget', () => {
+  it.each([
+    ['smart home under 60', 'smart home'],
+    ['warm sweater below €150 please', 'warm sweater please'],
+    ['bulb < 25', 'bulb'],
+    ['подарок до 50 евро', 'подарок'],
+    ['wireless headphones', 'wireless headphones'],
+  ])('%s -> %s', (query, expected) => {
+    expect(removeBudget(query)).toBe(expected)
   })
 })
 

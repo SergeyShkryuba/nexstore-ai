@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { contentHash, embedTexts, productEmbeddingText, toPgVector } from '@/lib/embeddings'
 
 const productSchema = z.object({
   title: z.string().trim().min(2, 'Title is required').max(120),
@@ -68,19 +69,39 @@ export async function createProduct(formData: FormData) {
     slug = `${baseSlug}-${attempt}`
   }
 
-  const { error } = await supabase.from('products').insert({
-    title,
-    description,
-    price,
-    inventory_count,
-    slug,
-    category_id,
-    image_urls: image_url ? [image_url] : [],
-  })
+  const { data: created, error } = await supabase
+    .from('products')
+    .insert({
+      title,
+      description,
+      price,
+      inventory_count,
+      slug,
+      category_id,
+      image_urls: image_url ? [image_url] : [],
+    })
+    .select('id, categories(name)')
+    .single()
 
   if (error) {
     console.error('Error creating product:', error)
     return { error: 'Failed to create product' }
+  }
+
+  // Make the product findable by meaning straight away. Not fatal: the product
+  // exists either way, and `npm run embed:catalogue` fills in anything missed.
+  try {
+    const category = (created.categories as { name?: string } | null)?.name ?? null
+    const text = productEmbeddingText({ title, description, category })
+    const [embedding] = await embedTexts([text])
+    const { error: embeddingError } = await supabase.from('product_embeddings').upsert({
+      product_id: created.id,
+      embedding: toPgVector(embedding),
+      content_hash: await contentHash(text),
+    })
+    if (embeddingError) throw embeddingError
+  } catch (embeddingError) {
+    console.error('Product created, but embedding it failed:', embeddingError)
   }
 
   revalidatePath('/admin/products')
