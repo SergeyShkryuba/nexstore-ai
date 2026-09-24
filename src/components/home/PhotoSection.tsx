@@ -19,7 +19,8 @@ export function PhotoSection({
     >
       <div aria-hidden="true" className="absolute inset-0 -z-10">
         <Image src={image} alt="" fill sizes="100vw" className="object-cover" />
-        <div className="absolute inset-0 bg-linear-to-b from-background/70 via-background/80 to-background/90" />
+        {/* Light theme needs a strong scrim for dark text; dark theme can let the photo through. */}
+        <div className="absolute inset-0 bg-linear-to-b from-background/75 via-background/80 to-background/90 dark:from-background/25 dark:via-background/40 dark:to-background/65" />
       </div>
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-8 md:py-14">{children}</div>
     </section>
