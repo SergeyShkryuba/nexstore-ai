@@ -2,11 +2,11 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export default function ProductLoading() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="mx-auto w-full max-w-6xl px-4 py-8">
       {/* Breadcrumb Skeleton */}
       <Skeleton className="h-4 w-48 mb-8" />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] gap-12">
         {/* Product Image Skeleton */}
         <div className="space-y-4">
           <Skeleton className="aspect-square w-full rounded-2xl" />
