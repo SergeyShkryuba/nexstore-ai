@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
   applyFilters,
+  buildFacets,
+  humanizeKey,
+  toggleValue,
   filtersToParams,
   hasActiveFilters,
   parseFilters,
@@ -15,7 +18,14 @@ const PRODUCTS: CatalogProduct[] = [
   { id: 'c', title: 'Headphones', price: 299.99, inventory_count: 50, created_at: '2026-01-02' },
 ]
 
-const defaults: CatalogFilters = { sort: DEFAULT_SORT, minPrice: null, maxPrice: null, inStock: false }
+const defaults: CatalogFilters = {
+  sort: DEFAULT_SORT,
+  minPrice: null,
+  maxPrice: null,
+  inStock: false,
+  sizes: [],
+  attributes: {},
+}
 
 const ids = (products: CatalogProduct[]) => products.map((p) => p.id)
 
@@ -26,7 +36,7 @@ describe('parseFilters', () => {
 
   it('reads every filter', () => {
     const filters = parseFilters(new URLSearchParams('sort=price-asc&min=10&max=200&stock=1'))
-    expect(filters).toEqual({ sort: 'price-asc', minPrice: 10, maxPrice: 200, inStock: true })
+    expect(filters).toEqual({ ...defaults, sort: 'price-asc', minPrice: 10, maxPrice: 200, inStock: true })
   })
 
   it('ignores malformed values instead of filtering everything out', () => {
@@ -47,7 +57,14 @@ describe('filtersToParams', () => {
   })
 
   it('round-trips through parseFilters', () => {
-    const filters: CatalogFilters = { sort: 'name', minPrice: 0, maxPrice: 50, inStock: true }
+    const filters: CatalogFilters = {
+      sort: 'name',
+      minPrice: 0,
+      maxPrice: 50,
+      inStock: true,
+      sizes: ['M', 'L'],
+      attributes: { color: ['Black', 'White'], material: ['Denim'] },
+    }
     expect(parseFilters(filtersToParams(filters))).toEqual(filters)
     expect(hasActiveFilters(filters)).toBe(true)
   })
@@ -80,5 +97,109 @@ describe('applyFilters', () => {
     const before = ids(PRODUCTS)
     applyFilters(PRODUCTS, { ...defaults, sort: 'price-asc' })
     expect(ids(PRODUCTS)).toEqual(before)
+  })
+})
+
+const CLOTHES: CatalogProduct[] = [
+  {
+    id: 'tee',
+    title: 'Tee',
+    price: 25,
+    inventory_count: 5,
+    attributes: { color: 'White', material: 'Cotton' },
+    variants: [
+      { size: 'M', inventory_count: 5 },
+      { size: 'L', inventory_count: 0 },
+    ],
+  },
+  {
+    id: 'jacket',
+    title: 'Jacket',
+    price: 90,
+    inventory_count: 3,
+    attributes: { color: 'Blue', material: 'Denim', fit: 'Regular' },
+    variants: [
+      { size: 'XL', inventory_count: 1 },
+      { size: 'S', inventory_count: 2 },
+    ],
+  },
+  {
+    id: 'sweater',
+    title: 'Sweater',
+    price: 119,
+    inventory_count: 4,
+    attributes: { color: 'White', material: 'Merino wool' },
+    variants: [{ size: 'L', inventory_count: 4 }],
+  },
+]
+
+describe('size and attribute filters', () => {
+  it('reads sizes and attribute values from the URL', () => {
+    const filters = parseFilters(new URLSearchParams('size=M&size=L&a.color=White&a.color=Blue&a.material=Denim'))
+    expect(filters.sizes).toEqual(['M', 'L'])
+    expect(filters.attributes).toEqual({ color: ['White', 'Blue'], material: ['Denim'] })
+  })
+
+  it('ignores attribute keys that are not plain words', () => {
+    const filters = parseFilters(new URLSearchParams('a.col%20or=White&a.=x&a.colour!=y'))
+    expect(filters.attributes).toEqual({})
+  })
+
+  it('cannot be used to pollute object prototypes', () => {
+    const filters = parseFilters(new URLSearchParams('a.__proto__=polluted&a.constructor=x&a.prototype=y'))
+    expect(Object.keys(filters.attributes)).toEqual([])
+    expect(Object.getPrototypeOf(filters.attributes)).toBe(Object.prototype)
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined()
+  })
+
+  it('matches any selected size, but only one that is in stock', () => {
+    expect(ids(applyFilters(CLOTHES, { ...defaults, sizes: ['L'] }))).toEqual(['sweater'])
+    expect(ids(applyFilters(CLOTHES, { ...defaults, sizes: ['M', 'S'] })).sort()).toEqual(['jacket', 'tee'])
+  })
+
+  it('ORs values within an attribute and ANDs across attributes', () => {
+    expect(ids(applyFilters(CLOTHES, { ...defaults, attributes: { color: ['White', 'Blue'] } })).length).toBe(3)
+    expect(
+      ids(applyFilters(CLOTHES, { ...defaults, attributes: { color: ['White'], material: ['Cotton'] } })),
+    ).toEqual(['tee'])
+  })
+
+  it('combines sizes and attributes', () => {
+    expect(ids(applyFilters(CLOTHES, { ...defaults, sizes: ['L'], attributes: { color: ['Blue'] } }))).toEqual([])
+  })
+})
+
+describe('buildFacets', () => {
+  it('offers sizes in stock, in wearing order, with product counts', () => {
+    expect(buildFacets(CLOTHES).sizes).toEqual([
+      { value: 'S', count: 1 },
+      { value: 'M', count: 1 },
+      { value: 'L', count: 1 },
+      { value: 'XL', count: 1 },
+    ])
+  })
+
+  it('offers only attributes that split the list', () => {
+    const facets = buildFacets(CLOTHES).attributes
+    expect(facets.map((f) => f.key)).toEqual(['color', 'material'])
+    expect(facets[0].values).toEqual([
+      { value: 'Blue', count: 1 },
+      { value: 'White', count: 2 },
+    ])
+  })
+
+  it('offers nothing for products without sizes or attributes', () => {
+    expect(buildFacets([{ id: 'x', title: 'X', price: 1 }])).toEqual({ sizes: [], attributes: [] })
+  })
+})
+
+describe('helpers', () => {
+  it('humanizes attribute keys', () => {
+    expect(humanizeKey('voice_assistant')).toBe('Voice assistant')
+  })
+
+  it('toggles a value in a list', () => {
+    expect(toggleValue(['M'], 'L')).toEqual(['M', 'L'])
+    expect(toggleValue(['M', 'L'], 'M')).toEqual(['L'])
   })
 })

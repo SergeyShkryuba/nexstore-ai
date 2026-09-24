@@ -65,7 +65,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
   const query = supabase
     .from('products')
-    .select('id, title, slug, price, image_urls, inventory_count, created_at')
+    .select('id, title, slug, price, image_urls, inventory_count, created_at, attributes, variants:product_variants(size, inventory_count, sort_order)')
   if (!isAll && category) {
     query.eq('category_id', category.id)
   }

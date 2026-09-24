@@ -91,7 +91,7 @@ export async function POST(req: Request) {
       await Promise.all([
         supabase
           .from('products')
-          .select('id, title, slug, description, price, category_id, image_urls, attributes, inventory_count'),
+          .select('id, title, slug, description, price, category_id, image_urls, attributes, inventory_count, variants:product_variants(size, inventory_count, sort_order)'),
         supabase.from('categories').select('id, slug'),
         semanticMatches(supabase, query),
       ])

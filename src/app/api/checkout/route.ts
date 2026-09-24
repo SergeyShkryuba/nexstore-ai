@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/server'
 import { siteUrl } from '@/lib/site'
 import { EU_COUNTRIES } from '@/lib/orders'
 import { CHECKOUT_TTL_SECONDS, RESERVATION_TTL_SECONDS, shortProductId } from '@/lib/reservations'
+import { resolveCartLines, type CatalogueProduct, type CheckoutLine } from '@/lib/checkout-lines'
 import { createServiceClient } from '@/utils/supabase/service'
 
 export const runtime = 'nodejs'
@@ -14,12 +15,12 @@ const stripe = process.env.STRIPE_SECRET_KEY
   : null
 
 /**
- * The client may only tell us WHICH product and HOW MANY.
+ * The client may only tell us WHICH product, WHICH size and HOW MANY.
  *
  * It may not tell us the price. An earlier version of this route built Stripe
  * line items straight from the cart payload, which meant anyone could POST
  * `{ id: "...", price: 0.01 }` and check out a €300 product for one cent.
- * Prices and titles are re-read from the database below.
+ * Prices, titles and sizes are re-read from the database below.
  */
 const checkoutRequestSchema = z.object({
   items: z
@@ -28,6 +29,7 @@ const checkoutRequestSchema = z.object({
         // guid(), not uuid(): Zod 4's uuid() requires an RFC version nibble and
         // rejected every seeded product id ('00000000-…-000000000001').
         id: z.guid(),
+        variantId: z.guid().nullish(),
         quantity: z.number().int().min(1).max(99),
       }),
     )
@@ -60,67 +62,43 @@ export async function POST(req: Request) {
 
   const { items } = parsed.data
 
-  // Collapse duplicate ids so a repeated line cannot bypass the stock check.
-  const requested = new Map<string, number>()
-  for (const item of items) {
-    requested.set(item.id, (requested.get(item.id) ?? 0) + item.quantity)
-  }
-
   try {
     const supabase = await createClient()
 
     const { data: products, error: productsError } = await supabase
       .from('products')
-      .select('id, title, price, image_urls, inventory_count')
-      .in('id', [...requested.keys()])
+      .select('id, title, price, image_urls, inventory_count, variants:product_variants(id, size, inventory_count)')
+      .in('id', [...new Set(items.map((i) => i.id))])
 
     if (productsError) {
       console.error('Checkout: failed to load products', productsError)
       return NextResponse.json({ error: 'Could not verify your cart' }, { status: 503 })
     }
 
-    const found = new Map((products ?? []).map((p) => [p.id as string, p]))
+    // Unknown products, missing or removed sizes, and short stock are all
+    // answered here — a fast, friendly check before anything is reserved.
+    const resolved = resolveCartLines(items, (products ?? []) as CatalogueProduct[])
+    if (!resolved.ok) return NextResponse.json({ error: resolved.error }, { status: resolved.status })
+    const { lines } = resolved
 
-    const missing = [...requested.keys()].filter((id) => !found.has(id))
-    if (missing.length > 0) {
-      return NextResponse.json(
-        { error: 'Some items are no longer available. Please refresh your cart.' },
-        { status: 409 },
-      )
-    }
-
-    const outOfStock = [...requested.entries()]
-      .filter(([id, qty]) => (found.get(id)!.inventory_count ?? 0) < qty)
-      .map(([id]) => found.get(id)!.title as string)
-
-    if (outOfStock.length > 0) {
-      return NextResponse.json(
-        { error: `Not enough stock for: ${outOfStock.join(', ')}` },
-        { status: 409 },
-      )
-    }
-
-    const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [...requested.entries()].map(
-      ([id, quantity]) => {
-        const product = found.get(id)!
-        const imageUrl = (product.image_urls as string[] | null)?.[0]
-        return {
-          price_data: {
-            currency: 'eur',
-            product_data: {
-              name: product.title as string,
-              ...(imageUrl ? { images: [imageUrl] } : {}),
-              // Carried through to the webhook so order_items can reference the
-              // real catalogue row rather than a Stripe-side product id.
-              metadata: { product_id: id },
-            },
-            // Authoritative price, from the database, in cents.
-            unit_amount: Math.round(Number(product.price) * 100),
+    const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = lines.map((line) => ({
+      price_data: {
+        currency: 'eur',
+        product_data: {
+          name: line.size ? `${line.title} — size ${line.size}` : line.title,
+          ...(line.imageUrl ? { images: [line.imageUrl] } : {}),
+          // Carried through to the webhook so order_items can reference the
+          // real catalogue row (and size) rather than a Stripe-side product.
+          metadata: {
+            product_id: line.productId,
+            ...(line.variantId ? { variant_id: line.variantId, variant_label: line.size ?? '' } : {}),
           },
-          quantity,
-        }
+        },
+        // Authoritative price, from the database, in cents.
+        unit_amount: Math.round(line.unitPrice * 100),
       },
-    )
+      quantity: line.quantity,
+    }))
 
     const {
       data: { user },
@@ -131,7 +109,7 @@ export async function POST(req: Request) {
 
     // Hold the units before sending the shopper to pay. The check above is a
     // fast, friendly answer; this is the one that cannot oversell.
-    const reservation = await reserveStock(requested, found)
+    const reservation = await reserveStock(lines)
     if ('response' in reservation) return reservation.response
 
     let session: Stripe.Checkout.Session
@@ -184,15 +162,12 @@ export async function POST(req: Request) {
 type ReservationResult = { id: string | null } | { response: NextResponse }
 
 /**
- * Takes the requested units off the shelf for the length of the checkout.
- * `id: null` means reservations are not installed in this database yet
- * (schema.sql not run): checkout then works as it did before, and the webhook
- * takes the stock when payment lands.
+ * Takes the requested units (of the chosen sizes) off the shelf for the length
+ * of the checkout. `id: null` means reservations are not installed in this
+ * database yet (schema.sql not run): checkout then works as it did before, and
+ * the webhook takes the stock when payment lands.
  */
-async function reserveStock(
-  requested: Map<string, number>,
-  products: Map<string, { title: unknown }>,
-): Promise<ReservationResult> {
+async function reserveStock(lines: readonly CheckoutLine[]): Promise<ReservationResult> {
   const service = createServiceClient()
   if (!service) {
     console.error('Checkout: SUPABASE_SERVICE_ROLE_KEY is not set; cannot reserve stock')
@@ -200,18 +175,36 @@ async function reserveStock(
   }
 
   const { data, error } = await service.rpc('reserve_stock', {
-    p_items: [...requested.entries()].map(([product_id, quantity]) => ({ product_id, quantity })),
+    p_items: lines.map((line) => ({
+      product_id: line.productId,
+      quantity: line.quantity,
+      ...(line.variantId ? { variant_id: line.variantId } : {}),
+    })),
     p_ttl_seconds: RESERVATION_TTL_SECONDS,
   })
   if (!error) return { id: data as string }
 
+  const titleOf = (productId: string) => {
+    const line = lines.find((l) => l.productId === productId)
+    return line ? (line.size ? `${line.title} (${line.size})` : line.title) : 'an item in your cart'
+  }
+
   // Someone else took the last units between the check above and now.
   const shortId = shortProductId(error)
   if (shortId) {
-    const title = String(products.get(shortId)?.title ?? 'an item in your cart')
     return {
       response: NextResponse.json(
-        { error: `Not enough stock for: ${title}. Someone may be checking it out right now.` },
+        { error: `Not enough stock for: ${titleOf(shortId)}. Someone may be checking it out right now.` },
+        { status: 409 },
+      ),
+    }
+  }
+
+  // The product gained sizes after the check above (an admin edit mid-checkout).
+  if (error.message === 'variant_required') {
+    return {
+      response: NextResponse.json(
+        { error: 'Sizes changed for an item in your cart. Please refresh your cart and choose a size.' },
         { status: 409 },
       ),
     }

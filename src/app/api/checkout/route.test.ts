@@ -101,3 +101,57 @@ describe('POST /api/checkout', () => {
     expect(rpc).not.toHaveBeenCalled()
   })
 })
+
+describe('POST /api/checkout with sizes', () => {
+  const SIZE_M = '6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b'
+
+  beforeEach(() => {
+    productRows.mockResolvedValue({
+      data: [
+        {
+          id: PRODUCT,
+          title: 'Shirt',
+          price: 25,
+          image_urls: [],
+          inventory_count: 7,
+          variants: [{ id: SIZE_M, size: 'M', inventory_count: 5 }],
+        },
+      ],
+      error: null,
+    })
+  })
+
+  const checkoutSized = (variantId: string | null) =>
+    POST(
+      new Request('http://shop.test/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', origin: 'http://shop.test' },
+        body: JSON.stringify({ items: [{ id: PRODUCT, variantId, quantity: 1 }] }),
+      }),
+    )
+
+  it('reserves the chosen size and names it on the Stripe line', async () => {
+    const res = await checkoutSized(SIZE_M)
+
+    expect(res.status).toBe(200)
+    expect(rpc).toHaveBeenCalledWith('reserve_stock', {
+      p_items: [{ product_id: PRODUCT, quantity: 1, variant_id: SIZE_M }],
+      p_ttl_seconds: expect.any(Number),
+    })
+    const line = createSession.mock.calls[0][0].line_items[0]
+    expect(line.price_data.product_data.name).toBe('Shirt — size M')
+    expect(line.price_data.product_data.metadata).toEqual({
+      product_id: PRODUCT,
+      variant_id: SIZE_M,
+      variant_label: 'M',
+    })
+  })
+
+  it('refuses a sized product without a size, before reserving anything', async () => {
+    const res = await checkoutSized(null)
+
+    expect(res.status).toBe(409)
+    expect((await res.json()).error).toContain('Choose a size')
+    expect(rpc).not.toHaveBeenCalled()
+  })
+})

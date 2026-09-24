@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 type OrderItemRow = {
   quantity: number
   unit_price: number
+  variant_label: string | null
   product: { title: string; slug: string; image_urls: string[] | null } | null
 }
 
@@ -30,7 +31,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const { data: order } = await supabase
     .from('orders')
     .select(
-      'id, created_at, status, total_amount, customer_email, shipping_address, order_items(quantity, unit_price, product:products(title, slug, image_urls))',
+      'id, created_at, status, total_amount, customer_email, shipping_address, order_items(quantity, unit_price, variant_label, product:products(title, slug, image_urls))',
     )
     .eq('id', id)
     .maybeSingle()
@@ -116,6 +117,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                           <p className="font-medium text-muted-foreground">No longer in the catalogue</p>
                         )}
                         <p className="text-sm text-muted-foreground">
+                          {item.variant_label && <>Size {item.variant_label} · </>}
                           {item.quantity} × {formatPrice(item.unit_price)}
                         </p>
                       </div>

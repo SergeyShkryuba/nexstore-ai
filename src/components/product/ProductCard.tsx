@@ -3,13 +3,14 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { useCartStore } from '@/store/useCartStore'
-import { ImageOff, ShoppingCart } from 'lucide-react'
+import { ImageOff, Ruler, ShoppingCart } from 'lucide-react'
 import { toast } from 'sonner'
 import { WishlistButton } from './WishlistButton'
 import { formatPrice } from '@/lib/format'
 import { stockLabel, stockLevel } from '@/lib/stock'
+import { sortVariants } from '@/lib/variants'
 import { cn } from '@/lib/utils'
 
 interface ProductCardProps {
@@ -21,6 +22,8 @@ interface ProductCardProps {
     image_urls: string[] | null
     /** Optional: callers that do not select stock get no sold-out state. */
     inventory_count?: number | null
+    /** Sizes, for products sold in them. Every list that shows cards selects these. */
+    variants?: { size: string; inventory_count: number; sort_order?: number | null }[] | null
   }
 }
 
@@ -29,6 +32,9 @@ export function ProductCard({ product }: ProductCardProps) {
   const imageUrl = product.image_urls?.[0]
   const stock = stockLevel(product.inventory_count)
   const soldOut = stock === 'out'
+  const sizes = sortVariants(product.variants)
+  const sizesInStock = sizes.filter((v) => v.inventory_count > 0).map((v) => v.size)
+  const productUrl = `/product/${product.slug}`
 
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -46,7 +52,7 @@ export function ProductCard({ product }: ProductCardProps) {
     // py-0/gap-0: the card's default padding left an empty strip above the
     // photo. Translucent with a blur, like the header, so section photos show.
     <Card className="relative overflow-hidden flex flex-col h-full gap-0 py-0 group bg-background/50 backdrop-blur-lg dark:bg-background/35">
-      <Link href={`/product/${product.slug}`} className="block flex-1">
+      <Link href={productUrl} className="block flex-1">
         <div className="aspect-square bg-muted relative overflow-hidden">
           {imageUrl ? (
             <Image
@@ -76,6 +82,12 @@ export function ProductCard({ product }: ProductCardProps) {
         <CardContent className="p-4">
           <h3 className="font-semibold text-lg line-clamp-1">{product.title}</h3>
           <p className="text-primary font-bold mt-2">{formatPrice(product.price)}</p>
+          {sizesInStock.length > 0 && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              <span className="sr-only">Sizes in stock: </span>
+              {sizesInStock.join(' · ')}
+            </p>
+          )}
         </CardContent>
       </Link>
 
@@ -88,10 +100,18 @@ export function ProductCard({ product }: ProductCardProps) {
       {/* Even padding on all sides: pt-0 under the footer's border pressed the
           button against the line while 16px sat below it. */}
       <CardFooter className="mt-auto border-border/50 bg-transparent p-4">
-        <Button className="w-full" onClick={handleAdd} disabled={soldOut}>
-          <ShoppingCart className="w-4 h-4 mr-2" aria-hidden="true" />
-          {soldOut ? 'Sold out' : 'Add to Cart'}
-        </Button>
+        {sizes.length > 0 && !soldOut ? (
+          // A sized product cannot go into the cart without a size.
+          <Link href={productUrl} className={buttonVariants({ className: 'w-full' })}>
+            <Ruler className="w-4 h-4 mr-2" aria-hidden="true" />
+            Choose size
+          </Link>
+        ) : (
+          <Button className="w-full" onClick={handleAdd} disabled={soldOut}>
+            <ShoppingCart className="w-4 h-4 mr-2" aria-hidden="true" />
+            {soldOut ? 'Sold out' : 'Add to Cart'}
+          </Button>
+        )}
       </CardFooter>
     </Card>
   )

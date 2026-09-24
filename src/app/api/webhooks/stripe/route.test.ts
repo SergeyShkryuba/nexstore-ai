@@ -74,7 +74,7 @@ describe('Stripe webhook', () => {
       p_email: 'ana@example.com',
       p_total: 59.98,
       p_shipping: { name: 'Ana', phone: '+34 600', address: { city: 'Barcelona', country: 'ES' } },
-      p_items: [{ product_id: 'p1', quantity: 2, unit_price: 29.99 }],
+      p_items: [{ product_id: 'p1', variant_id: null, variant_label: null, quantity: 2, unit_price: 29.99 }],
       p_reservation_id: null,
     })
   })

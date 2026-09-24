@@ -3,7 +3,8 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { contentHash, embedTexts, productEmbeddingText, toPgVector } from '@/lib/embeddings'
-import { orderStatusSchema, parseCategoryForm, parseProductForm, slugify } from '@/lib/admin-schemas'
+import { orderStatusSchema, parseCategoryForm, parseProductForm, slugify, type ProductInput } from '@/lib/admin-schemas'
+import { parseVariantsField, type VariantInput } from '@/lib/variants'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 type ActionResult = { success: true; id?: string } | { error: string }
@@ -78,32 +79,54 @@ async function syncEmbedding(supabase: Supabase, productId: string) {
   }
 }
 
+/**
+ * Reads the product form: fields plus the sizes editor (JSON). Both are
+ * validated before anything is written.
+ */
+type ProductForm =
+  | { fields: ProductInput; variants: VariantInput[] | null }
+  | { error: string }
+
+function readProductForm(formData: FormData): ProductForm {
+  const parsed = parseProductForm(formData)
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid product data' }
+  const variants = parseVariantsField(formData.get('variants'))
+  if (!variants.success) return { error: variants.error }
+  return { fields: parsed.data, variants: variants.data }
+}
+
+/** Postgres error from save_product() → what the admin should read. */
+function saveProductError(error: { code?: string; message?: string }, fallback: string): string {
+  if (error.message === 'product_not_found') return 'Product not found'
+  if (error.code === '23505') return 'Another product already uses that name or size — please try again'
+  return fallback
+}
+
 export async function createProduct(formData: FormData): Promise<ActionResult> {
   const auth = await requireAdmin()
   if ('error' in auth) return auth
   const { supabase } = auth
 
-  const parsed = parseProductForm(formData)
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'Invalid product data' }
-  }
+  const form = readProductForm(formData)
+  if ('error' in form) return { error: form.error }
 
-  const slug = await freeSlug(supabase, 'products', slugify(parsed.data.title) || 'product')
+  const slug = await freeSlug(supabase, 'products', slugify(form.fields.title) || 'product')
 
-  const { data: created, error } = await supabase
-    .from('products')
-    .insert({ ...parsed.data, slug })
-    .select('id')
-    .single()
+  // Product and sizes in one transaction (save_product in schema.sql).
+  const { data: id, error } = await supabase.rpc('save_product', {
+    p_product_id: null,
+    p_fields: { ...form.fields, slug },
+    p_variants: form.variants,
+  })
 
   if (error) {
     console.error('Error creating product:', error)
-    return { error: 'Failed to create product' }
+    return { error: saveProductError(error, 'Failed to create product') }
   }
 
-  await syncEmbedding(supabase, created.id)
+  await syncEmbedding(supabase, id as string)
   revalidateCatalogue(slug)
-  return { success: true, id: created.id }
+  return { success: true, id: id as string }
 }
 
 /** The slug is kept on purpose: renaming a product must not break links to it. */
@@ -112,26 +135,23 @@ export async function updateProduct(productId: string, formData: FormData): Prom
   if ('error' in auth) return auth
   const { supabase } = auth
 
-  const parsed = parseProductForm(formData)
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? 'Invalid product data' }
-  }
+  const form = readProductForm(formData)
+  if ('error' in form) return { error: form.error }
 
-  const { data: updated, error } = await supabase
-    .from('products')
-    .update(parsed.data)
-    .eq('id', productId)
-    .select('id, slug')
-    .maybeSingle()
+  const { error } = await supabase.rpc('save_product', {
+    p_product_id: productId,
+    p_fields: form.fields,
+    p_variants: form.variants,
+  })
 
   if (error) {
     console.error('Error updating product:', error)
-    return { error: 'Failed to update product' }
+    return { error: saveProductError(error, 'Failed to update product') }
   }
-  if (!updated) return { error: 'Product not found' }
 
+  const { data: saved } = await supabase.from('products').select('slug').eq('id', productId).maybeSingle()
   await syncEmbedding(supabase, productId)
-  revalidateCatalogue(updated.slug)
+  revalidateCatalogue(saved?.slug)
   return { success: true, id: productId }
 }
 

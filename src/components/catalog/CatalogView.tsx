@@ -3,12 +3,16 @@
 import { useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ProductCard } from '@/components/product/ProductCard'
 import {
   applyFilters,
+  buildFacets,
+  toggleValue,
+  type FacetValue,
   filtersToParams,
   hasActiveFilters,
   parseFilters,
@@ -25,6 +29,8 @@ export type CatalogItem = {
   image_urls: string[] | null
   inventory_count: number
   created_at: string
+  attributes?: Record<string, unknown> | null
+  variants?: { size: string; inventory_count: number; sort_order?: number | null }[] | null
 }
 
 const PAGE_SIZE = 12
@@ -54,6 +60,8 @@ export function CatalogView({ products }: { products: readonly CatalogItem[] }) 
   const searchParams = useSearchParams()
 
   const filters = useMemo(() => parseFilters(searchParams), [searchParams])
+  // From the whole category, so options do not vanish as filters narrow it.
+  const facets = useMemo(() => buildFacets(products), [products])
   const results = useMemo(() => applyFilters(products, filters), [products, filters])
 
   const update = (patch: Partial<CatalogFilters>) => {
@@ -105,6 +113,33 @@ export function CatalogView({ products }: { products: readonly CatalogItem[] }) 
           </Button>
         )}
       </div>
+
+      {(facets.sizes.length > 0 || facets.attributes.length > 0) && (
+        <div className="space-y-4 rounded-xl border p-4">
+          {facets.sizes.length > 0 && (
+            <FacetGroup
+              label="Size"
+              values={facets.sizes}
+              selected={filters.sizes}
+              onToggle={(value) => update({ sizes: toggleValue(filters.sizes, value) })}
+            />
+          )}
+          {facets.attributes.map((facet) => (
+            <FacetGroup
+              key={facet.key}
+              label={facet.label}
+              values={facet.values}
+              selected={filters.attributes[facet.key] ?? []}
+              onToggle={(value) => {
+                const next = toggleValue(filters.attributes[facet.key] ?? [], value)
+                const attributes = { ...filters.attributes, [facet.key]: next }
+                if (next.length === 0) delete attributes[facet.key]
+                update({ attributes })
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       <Results key={searchParams.toString()} products={results} total={products.length} />
     </div>
@@ -217,5 +252,42 @@ function Results({ products, total }: { products: CatalogItem[]; total: number }
         </div>
       )}
     </>
+  )
+}
+
+/** One filter group: toggle chips; any selected value within the group matches. */
+function FacetGroup({
+  label,
+  values,
+  selected,
+  onToggle,
+}: {
+  label: string
+  values: FacetValue[]
+  selected: string[]
+  onToggle: (value: string) => void
+}) {
+  return (
+    <fieldset className="flex flex-wrap items-center gap-2">
+      <legend className="float-left mr-2 w-24 shrink-0 text-sm font-medium">{label}</legend>
+      {values.map(({ value, count }) => {
+        const on = selected.includes(value)
+        return (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onToggle(value)}
+            className={cn(
+              'rounded-full border px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+              on ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted',
+            )}
+          >
+            {value}
+            <span className={cn('ml-1.5 text-xs', on ? 'opacity-80' : 'text-muted-foreground')}>{count}</span>
+          </button>
+        )
+      })}
+    </fieldset>
   )
 }

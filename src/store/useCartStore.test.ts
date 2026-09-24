@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { useCartStore } from './useCartStore'
+import { lineKey, useCartStore } from './useCartStore'
 
 describe('useCartStore', () => {
   beforeEach(() => {
@@ -111,5 +111,35 @@ describe('useCartStore — edge cases', () => {
     useCartStore.getState().addItem({ id: '1', title: 'A', price: 19.9, quantity: 3 })
 
     expect(useCartStore.getState().totalPrice()).toBeCloseTo(59.7, 10)
+  })
+})
+
+describe('useCartStore with sizes', () => {
+  beforeEach(() => useCartStore.getState().clearCart())
+
+  const shirt = { id: 'p1', title: 'Shirt', price: 25, quantity: 1 }
+
+  it('keeps each size of a product on its own line', () => {
+    const { addItem } = useCartStore.getState()
+    addItem({ ...shirt, variantId: 'm', size: 'M' })
+    addItem({ ...shirt, variantId: 'l', size: 'L' })
+    addItem({ ...shirt, variantId: 'm', size: 'M' })
+
+    const { items } = useCartStore.getState()
+    expect(items.map((i) => [i.size, i.quantity])).toEqual([
+      ['M', 2],
+      ['L', 1],
+    ])
+  })
+
+  it('changes and removes one size without touching the other', () => {
+    const { addItem } = useCartStore.getState()
+    addItem({ ...shirt, variantId: 'm', size: 'M' })
+    addItem({ ...shirt, variantId: 'l', size: 'L' })
+
+    useCartStore.getState().updateQuantity(lineKey({ id: 'p1', variantId: 'm' }), 3)
+    useCartStore.getState().removeItem(lineKey({ id: 'p1', variantId: 'l' }))
+
+    expect(useCartStore.getState().items).toEqual([{ ...shirt, variantId: 'm', size: 'M', quantity: 3 }])
   })
 })
