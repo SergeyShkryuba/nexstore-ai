@@ -105,13 +105,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
   })
 
   return (
-    <div className="container mx-auto px-4 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    // max-w-6xl: with the photo column capped, the text column would otherwise
+    // stretch to the full width of wide screens.
+    <div className="mx-auto w-full max-w-6xl px-4 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(productData) }}
       />
       <Breadcrumbs crumbs={crumbs} />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16">
+      {/* The photo column is capped at 340-380px (it was half the page, ~700px);
+          the full-size view is a click away in the gallery. */}
+      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,340px)_minmax(0,1fr)] lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] gap-12 mb-16">
         
         <ProductGallery images={product.image_urls ?? []} title={product.title} />
 

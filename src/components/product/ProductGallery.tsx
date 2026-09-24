@@ -76,7 +76,7 @@ export function ProductGallery({ images, title }: ProductGalleryProps) {
             alt={alt}
             fill
             priority={index === 0}
-            sizes="(max-width: 768px) 100vw, 50vw"
+            sizes="(max-width: 768px) 100vw, 380px"
             className="object-cover"
           />
         </button>
