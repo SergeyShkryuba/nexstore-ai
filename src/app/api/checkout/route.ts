@@ -3,6 +3,7 @@ import Stripe from 'stripe'
 import { z } from 'zod'
 import { createClient } from '@/utils/supabase/server'
 import { siteUrl } from '@/lib/site'
+import { EU_COUNTRIES } from '@/lib/orders'
 
 export const runtime = 'nodejs'
 
@@ -133,10 +134,22 @@ export async function POST(req: Request) {
       cancel_url: `${origin}/cart`,
       customer_email: user?.email,
       client_reference_id: user?.id,
-      metadata: {
-        // Compact enough to stay inside Stripe's 500-character metadata limit.
-        cart: JSON.stringify([...requested.entries()].map(([id, qty]) => [id, qty])).slice(0, 480),
-      },
+      // What the shipping page promises: free EU delivery in 2–5 business days.
+      shipping_address_collection: { allowed_countries: [...EU_COUNTRIES] },
+      phone_number_collection: { enabled: true },
+      shipping_options: [
+        {
+          shipping_rate_data: {
+            type: 'fixed_amount',
+            display_name: 'Free standard shipping',
+            fixed_amount: { amount: 0, currency: 'eur' },
+            delivery_estimate: {
+              minimum: { unit: 'business_day', value: 2 },
+              maximum: { unit: 'business_day', value: 5 },
+            },
+          },
+        },
+      ],
     })
 
     if (!session.url) {
@@ -145,11 +158,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: session.url })
   } catch (error) {
+    // Details stay in the server log. Stripe's messages can quote part of the
+    // API key ("Invalid API Key provided: sk_test_…") and mean nothing to a
+    // shopper anyway.
     console.error('Stripe Checkout error:', error)
-    const message =
-      error instanceof Stripe.errors.StripeError
-        ? error.message
-        : 'Checkout failed. Please try again.'
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: 'Checkout failed. Please try again.' }, { status: 500 })
   }
 }

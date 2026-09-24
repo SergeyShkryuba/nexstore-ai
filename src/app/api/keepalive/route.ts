@@ -25,7 +25,9 @@ export async function GET(req: Request) {
     .select('id', { count: 'exact', head: true })
 
   if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 502 })
+    // The database's own message stays in the log; callers only learn it failed.
+    console.error('Keep-alive: database read failed', error)
+    return NextResponse.json({ ok: false }, { status: 502 })
   }
 
   return NextResponse.json({ ok: true, categories: count, at: new Date().toISOString() })

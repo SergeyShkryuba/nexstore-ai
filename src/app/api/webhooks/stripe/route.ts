@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { orderItemsFromLineItems, shippingFromSession } from '@/lib/orders'
 
 export const runtime = 'nodejs'
 
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET
+
+const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /**
  * Webhooks arrive without a user session, so they need the service-role key to
@@ -46,34 +49,39 @@ export async function POST(req: Request) {
   }
 
   try {
-    if (event.type === 'checkout.session.completed') {
-      await handleCheckoutCompleted(supabase, stripe, event.data.object)
+    // Card payments are paid by `completed`. Delayed methods (SEPA debit and
+    // the like) complete unpaid and confirm later with `async_payment_succeeded`
+    // — ignoring that event used to lose those orders entirely.
+    if (
+      event.type === 'checkout.session.completed' ||
+      event.type === 'checkout.session.async_payment_succeeded'
+    ) {
+      await recordPaidSession(supabase, stripe, event.data.object)
     }
     return NextResponse.json({ received: true })
   } catch (error) {
     console.error('Webhook handler error:', error)
-    // Returning 500 makes Stripe retry, which is what we want for a transient
-    // database failure. The unique constraint on stripe_session_id keeps the
-    // retry from creating a duplicate order.
+    // 500 makes Stripe retry. Safe: record_paid_order is a single transaction
+    // (nothing half-written survives a failure) and idempotent per session.
     return NextResponse.json({ error: 'Failed to process event' }, { status: 500 })
   }
 }
 
-async function handleCheckoutCompleted(
+async function recordPaidSession(
   supabase: SupabaseClient,
   stripeClient: Stripe,
   session: Stripe.Checkout.Session,
 ) {
   if (session.payment_status !== 'paid') return
 
-  // Idempotency: Stripe delivers at-least-once, and a retry must not duplicate
-  // the order. `stripe_session_id` is UNIQUE in the schema.
+  // Cheap early exit for Stripe's at-least-once redeliveries. Not what
+  // guarantees "no duplicates" — the unique stripe_session_id inside the
+  // transaction does — it only saves the line-items call below.
   const { data: existing } = await supabase
     .from('orders')
     .select('id')
     .eq('stripe_session_id', session.id)
     .maybeSingle()
-
   if (existing) return
 
   const lineItems = await stripeClient.checkout.sessions.listLineItems(session.id, {
@@ -81,54 +89,17 @@ async function handleCheckoutCompleted(
     expand: ['data.price.product'],
   })
 
-  const { data: order, error: orderError } = await supabase
-    .from('orders')
-    .insert({
-      user_id: session.client_reference_id || null,
-      total_amount: (session.amount_total ?? 0) / 100,
-      status: 'paid',
-      stripe_session_id: session.id,
-      customer_email: session.customer_details?.email ?? null,
-      shipping_address: session.customer_details?.address ?? null,
-    })
-    .select('id')
-    .single()
+  // Order, lines and stock decrement in one transaction: all or nothing.
+  const { error } = await supabase.rpc('record_paid_order', {
+    p_session_id: session.id,
+    // Set by our checkout route; anything not shaped like an id would fail the
+    // uuid cast on every retry, so it is dropped rather than passed through.
+    p_user_id: UUID_SHAPE.test(session.client_reference_id ?? '') ? session.client_reference_id : null,
+    p_email: session.customer_details?.email ?? null,
+    p_total: (session.amount_total ?? 0) / 100,
+    p_shipping: shippingFromSession(session),
+    p_items: orderItemsFromLineItems(lineItems.data),
+  })
 
-  if (orderError) {
-    // 23505 = unique_violation: a concurrent delivery won the race. Not an error.
-    if (orderError.code === '23505') return
-    throw new Error(`Failed to insert order: ${orderError.message}`)
-  }
-
-  const orderItems = lineItems.data
-    .map((item) => {
-      const product = item.price?.product
-      const productId =
-        typeof product === 'object' && product !== null && 'metadata' in product
-          ? (product.metadata?.product_id ?? null)
-          : null
-      const quantity = item.quantity ?? 1
-      return {
-        order_id: order.id,
-        product_id: productId,
-        quantity,
-        // Schema column is `unit_price`, not `price_at_time`.
-        unit_price: (item.amount_total ?? 0) / 100 / quantity,
-      }
-    })
-    .filter((row) => row.product_id !== null)
-
-  if (orderItems.length > 0) {
-    const { error: itemsError } = await supabase.from('order_items').insert(orderItems)
-    if (itemsError) throw new Error(`Failed to insert order items: ${itemsError.message}`)
-  }
-
-  // Decrement stock for what was actually paid for.
-  for (const row of orderItems) {
-    const { error } = await supabase.rpc('decrement_inventory', {
-      p_product_id: row.product_id,
-      p_quantity: row.quantity,
-    })
-    if (error) console.error('Failed to decrement inventory', row.product_id, error.message)
-  }
+  if (error) throw new Error(`record_paid_order failed: ${error.message}`)
 }

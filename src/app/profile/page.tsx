@@ -1,7 +1,8 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Package, User } from 'lucide-react'
+import Link from 'next/link'
+import { ChevronRight, Package, User } from 'lucide-react'
 import { formatPrice } from '@/lib/format'
 
 type OrderRow = {
@@ -80,20 +81,27 @@ export default async function ProfilePage() {
               ) : (
                 <div className="space-y-4">
                   {(orders as OrderRow[]).map((order) => (
-                    <div key={order.id} className="border p-4 rounded-lg flex justify-between items-center">
+                    <Link
+                      key={order.id}
+                      href={`/profile/orders/${order.id}`}
+                      className="border p-4 rounded-lg flex justify-between items-center transition-colors hover:bg-muted/50"
+                    >
                       <div>
                         <p className="font-semibold">Order #{order.id.slice(0, 8)}</p>
                         <p className="text-sm text-muted-foreground">
-                          {new Date(order.created_at).toLocaleDateString()}
+                          {new Date(order.created_at).toLocaleDateString('en-IE')}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold">{formatPrice(order.total_amount)}</p>
-                        <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full uppercase tracking-wider">
-                          {order.status}
-                        </span>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="font-bold">{formatPrice(order.total_amount)}</p>
+                          <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full uppercase tracking-wider">
+                            {order.status}
+                          </span>
+                        </div>
+                        <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}
