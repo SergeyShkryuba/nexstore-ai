@@ -91,6 +91,7 @@ export default async function Home() {
             title="New arrivals"
             href="/categories/all"
             linkLabel="View all"
+            id="new-arrivals"
             image={SHELF_IMAGES.arrivals}
             products={featured}
           />
@@ -104,6 +105,7 @@ export default async function Home() {
             title={`Under €${BUDGET}`}
             href={`/categories/all?sort=price-asc&max=${BUDGET}&stock=1`}
             linkLabel={`All under €${BUDGET}`}
+            id={`under-${BUDGET}`}
             image={SHELF_IMAGES.budget}
             products={budgetPicks}
           />
@@ -122,17 +124,20 @@ function ProductShelf({
   title,
   href,
   linkLabel,
+  id,
   image,
   products,
 }: {
   title: string
   href: string
   linkLabel: string
+  /** Anchor, so the shelf can be linked to directly. */
+  id: string
   image: string
   products: Parameters<typeof ProductCard>[0]['product'][]
 }) {
   return (
-    <PhotoSection image={image} aria-label={title}>
+    <PhotoSection id={id} image={image} aria-label={title} className="scroll-mt-20">
       <div className="flex items-baseline justify-between mb-8">
         <h2 className="text-3xl font-bold">{title}</h2>
         <Link href={href} className="text-sm text-muted-foreground hover:text-foreground">
