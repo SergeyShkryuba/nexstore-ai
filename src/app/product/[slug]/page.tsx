@@ -1,10 +1,10 @@
 import { notFound } from 'next/navigation'
 import { AddToCartButton } from '@/components/product/AddToCartButton'
 import { ProductCard } from '@/components/product/ProductCard'
+import { ProductGallery } from '@/components/product/ProductGallery'
 import { ReviewSection } from '@/components/product/ReviewSection'
 import { Star, Shield, Truck, RotateCcw } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
-import Image from 'next/image'
 import { createPublicClient } from '@/utils/supabase/public'
 import { averageRating, formatPrice } from '@/lib/format'
 
@@ -82,22 +82,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     <div className="container mx-auto px-4 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16">
         
-        <div className="aspect-square bg-muted rounded-2xl overflow-hidden border relative">
-          {product.image_urls?.[0] ? (
-            <Image
-              src={product.image_urls[0]}
-              alt={product.title}
-              fill
-              priority
-              sizes="(max-width: 768px) 100vw, 50vw"
-              className="object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-              No image available
-            </div>
-          )}
-        </div>
+        <ProductGallery images={product.image_urls ?? []} title={product.title} />
 
         <div className="flex flex-col space-y-6">
           <div>
