@@ -19,12 +19,29 @@ export type SearchProduct = {
 type SearchResponse = {
   query: string
   maxPrice: number | null
-  results: Array<{ product: SearchProduct; score: number; matchedTerms: string[] }>
-  strategy: 'lexical'
+  results: Array<{
+    product: SearchProduct
+    score: number
+    matchedTerms: string[]
+    similarity: number | null
+  }>
+  strategy: 'hybrid' | 'lexical'
   took_ms: number
 }
 
-const EXAMPLES = ['wireless headphones', 'red sweater for winter', 'smart home under 60']
+const STRATEGY_LABEL: Record<SearchResponse['strategy'], string> = {
+  hybrid: 'semantic + keyword ranking',
+  // Shown when the embedding service did not answer: say so rather than pretend.
+  lexical: 'keyword ranking only',
+}
+
+// The last two name no product: they only work because search matches meaning.
+const EXAMPLES = [
+  'wireless headphones',
+  'smart home under 60',
+  'something to keep me warm in winter',
+  'film my surfing trip',
+]
 
 export function SearchSection() {
   const [query, setQuery] = useState('')
@@ -78,8 +95,8 @@ export function SearchSection() {
           Search the catalogue <span className="text-primary">in your own words</span>
         </h1>
         <p className="text-xl text-muted-foreground">
-          Type what you need — including a budget, like &ldquo;smart home under 60&rdquo; — and the
-          ranker scores every product against it.
+          Describe what you need — even without the product&apos;s name, and with a budget like
+          &ldquo;under 60&rdquo; — and search matches it by meaning as well as by keywords.
         </p>
 
         <form
@@ -147,21 +164,22 @@ export function SearchSection() {
                 : 'No matches'}
             </h2>
             <p className="text-sm text-muted-foreground">
-              lexical ranking · {response.took_ms} ms
+              {STRATEGY_LABEL[response.strategy]} · {response.took_ms} ms
               {response.maxPrice !== null && ` · budget ≤ €${response.maxPrice}`}
             </p>
           </div>
 
           {response.results.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-              {response.results.map(({ product, matchedTerms }) => (
+              {response.results.map(({ product, matchedTerms, similarity }) => (
                 <div key={product.id} className="space-y-2">
                   <ProductCard product={{ ...product, image_urls: product.image_urls ?? [] }} />
-                  {matchedTerms.length > 0 && (
-                    <p className="text-xs text-muted-foreground px-1">
-                      matched: {matchedTerms.join(', ')}
-                    </p>
-                  )}
+                  <p className="text-xs text-muted-foreground px-1">
+                    {matchedTerms.length > 0
+                      ? `matched: ${matchedTerms.join(', ')}`
+                      : 'matched by meaning'}
+                    {similarity !== null && ` · similarity ${similarity.toFixed(2)}`}
+                  </p>
                 </div>
               ))}
             </div>

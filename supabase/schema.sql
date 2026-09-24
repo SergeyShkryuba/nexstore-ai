@@ -265,3 +265,52 @@ create policy "Users can update their own reviews"
 drop policy if exists "Users can delete their own reviews" on reviews;
 create policy "Users can delete their own reviews"
   on reviews for delete using (auth.uid() = user_id);
+
+-- ======================== Semantic search ==================================
+-- Product embeddings (gte-small, 384 dimensions) produced by the `embed` Edge
+-- Function. Kept out of `products` so `select('*')` on the catalogue does not
+-- ship 384 floats per row to the browser. `content_hash` is the SHA-256 of the
+-- text that was embedded, so the backfill script only re-embeds what changed.
+
+create extension if not exists vector with schema extensions;
+
+create table if not exists product_embeddings (
+  product_id uuid primary key references products(id) on delete cascade,
+  embedding extensions.vector(384) not null,
+  content_hash text not null,
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_product_embeddings_hnsw on product_embeddings
+  using hnsw (embedding extensions.vector_cosine_ops);
+
+alter table product_embeddings enable row level security;
+
+-- No read policy: vectors are only reachable through match_products(), which
+-- returns ids and scores. Admins write them from the admin panel; the backfill
+-- script uses the service-role key and bypasses RLS.
+drop policy if exists "Admins manage product embeddings" on product_embeddings;
+create policy "Admins manage product embeddings"
+  on product_embeddings for all using (public.is_admin()) with check (public.is_admin());
+
+-- Nearest products by cosine similarity (1 = same direction).
+-- SECURITY DEFINER to read the embeddings table past its RLS; it only ever
+-- returns product ids and similarity scores.
+create or replace function public.match_products(
+  query_embedding extensions.vector(384),
+  match_count integer default 12
+)
+returns table (id uuid, similarity double precision)
+language sql
+stable
+security definer
+set search_path = public, extensions
+as $$
+  select e.product_id, 1 - (e.embedding <=> query_embedding)
+  from product_embeddings e
+  order by e.embedding <=> query_embedding
+  limit least(greatest(match_count, 1), 50);
+$$;
+
+revoke all on function public.match_products(extensions.vector, integer) from public;
+grant execute on function public.match_products(extensions.vector, integer) to anon, authenticated, service_role;

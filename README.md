@@ -9,7 +9,7 @@ TypeScript, Tailwind CSS v4 and Supabase, with Stripe Checkout for payments.
 
 | | |
 |---|---|
-| **Live demo** | _add your Vercel URL here_ |
+| **Live demo** | [nexstore-ai.vercel.app](https://nexstore-ai.vercel.app) |
 | **Stack** | Next.js 16 · React 19 · TypeScript · Tailwind v4 · Supabase (Postgres + Auth + RLS) · Stripe · Zustand · Zod · Vitest |
 | **CI** | Typecheck, ESLint, unit tests and a production build on every push |
 
@@ -17,9 +17,13 @@ TypeScript, Tailwind CSS v4 and Supabase, with Stripe Checkout for payments.
 
 ## What it does
 
-- **Catalogue search** — free-text queries are tokenised, stemmed and scored
-  against title, attributes and description, with budget parsing
-  (`"smart home under 60"`). Returns nothing when nothing matches.
+- **Hybrid search** — semantic (pgvector nearest neighbours over gte-small
+  embeddings) fused with a lexical ranker, with budget parsing
+  (`"smart home under 60"`). `"film my surfing trip"` finds the action camera
+  without sharing a word with it; `"kitchen knife"` returns nothing, because
+  the shop sells none.
+- **Catalogue browsing** — sort, price range and in-stock filters kept in the
+  URL; product pages with an image gallery.
 - **Cart** — client-side, persisted to `localStorage`, hydration-safe.
 - **Checkout** — Stripe Checkout Session. **Prices are re-read from the database
   server-side**; the client only sends product ids and quantities.
@@ -50,12 +54,23 @@ through its parent order, wishlists are strictly private, and admin access is
 resolved by a `SECURITY DEFINER` `is_admin()` function so the policy does not
 recurse through the `profiles` policies.
 
-**Search** (`src/lib/search.ts`) is a pure module with no framework imports, so
-the ranking is unit-testable without a database. The scoring is **lexical**, not
-semantic: field-weighted term matching with saturating counts, a coverage
-multiplier and an exact-phrase bonus. Real semantic search would mean embedding
-the catalogue with `pgvector` and doing a nearest-neighbour query — that is a
-different project, and this README does not pretend otherwise.
+**Search** runs two rankers in parallel and fuses them.
+
+- *Lexical* (`src/lib/search.ts`): field-weighted term matching with saturating
+  counts, a coverage multiplier and an exact-phrase bonus.
+- *Semantic*: the query (minus its budget phrase) is embedded by a Supabase Edge
+  Function running the built-in gte-small model (`supabase/functions/embed`),
+  and `match_products()` returns the nearest products by cosine similarity from
+  an HNSW index. Product vectors live in their own `product_embeddings` table,
+  so catalogue queries never ship them to the browser.
+- *Fusion* (`src/lib/hybrid.ts`): reciprocal rank fusion, since the two scores
+  are on unrelated scales. Semantic matches must clear 0.80 similarity *and* be
+  within 0.05 of the best match — thresholds calibrated on the demo catalogue,
+  where on-topic matches score 0.80–0.92 and the best match for things the shop
+  does not sell stays under 0.80.
+
+If the Edge Function is slow or down, search falls back to lexical ranking and
+the UI says so. All three modules are pure and unit-tested without a database.
 
 **Fonts** are self-hosted through `@fontsource-variable/*` rather than
 `next/font/google`, so builds do not depend on reaching fonts.googleapis.com
@@ -79,6 +94,17 @@ Create a Supabase project, then run the two SQL files in the SQL editor:
 supabase/schema.sql   # tables, triggers, functions, RLS policies (idempotent)
 supabase/seed.sql     # demo catalogue (upsert, safe to re-run)
 ```
+
+For semantic search, deploy the Edge Function (dashboard → Edge Functions →
+new function `embed`, paste `supabase/functions/embed/index.ts`; or
+`npx supabase functions deploy embed`), then embed the catalogue:
+
+```bash
+npm run embed:catalogue   # needs SUPABASE_SERVICE_ROLE_KEY; skips unchanged products
+```
+
+Products created in the admin panel are embedded on creation. Without the
+function, search still works — lexically.
 
 To make yourself an admin:
 
@@ -112,6 +138,7 @@ and put the printed signing secret in `STRIPE_WEBHOOK_SECRET`.
 | `npm run lint` | ESLint |
 | `npm test` | Vitest |
 | `npm run verify` | All of the above, in the order CI runs them |
+| `npm run embed:catalogue` | Embed new or changed products for semantic search |
 
 ## Tests
 
@@ -119,6 +146,12 @@ and put the printed signing secret in `STRIPE_WEBHOOK_SECRET`.
 
 - `src/lib/search.test.ts` — stemming, stop words, budget parsing, ranking
   order, and the guarantee that an unmatched query returns nothing.
+- `src/lib/hybrid.test.ts` — rank fusion, the similarity cut-offs, and the
+  budget applied to semantic matches.
+- `src/lib/embeddings.test.ts` — the embedded text, content hashing, and the
+  Edge Function client's error handling.
+- `src/lib/catalog.test.ts` — category filters: URL round-trip, malformed
+  input, sorting and price ranges.
 - `src/store/useCartStore.test.ts` — quantity merging, removal at zero,
   totals, and that re-adding an item cannot overwrite its stored price.
 - `src/components/product/ProductCard.test.tsx` — rendering, the add-to-cart
@@ -129,7 +162,10 @@ and put the printed signing secret in `STRIPE_WEBHOOK_SECRET`.
 
 Listed rather than hidden:
 
-- Search is lexical, not semantic or LLM-backed.
+- Semantic search is English-only: gte-small is an English model, so a
+  Russian or Spanish query falls back to keyword matching in practice.
+- The similarity thresholds were calibrated on a 10-product catalogue; a much
+  larger or different catalogue should be re-checked.
 - No order management UI in the admin panel (orders are visible in `/profile`).
 - Stock is decremented after payment, not reserved at checkout, so a race
   between two buyers of the last unit is possible.

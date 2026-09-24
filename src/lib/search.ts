@@ -64,14 +64,15 @@ export function tokenize(input: string): string[] {
     .map(stem)
 }
 
+const BUDGET_PATTERNS = [
+  /(?:under|below|less than|cheaper than|max|up to|до)\s*[$€]?\s*(\d+(?:[.,]\d+)?)\s*(?:€|eur|euros?|евро)?/i,
+  /<\s*[$€]?\s*(\d+(?:[.,]\d+)?)/,
+  /[$€]\s*(\d+(?:[.,]\d+)?)\s*(?:or less|and under|max)/i,
+]
+
 /** Parse an explicit budget out of the query: "under 200", "до 50 евро", "<100". */
 export function extractMaxPrice(input: string): number | null {
-  const patterns = [
-    /(?:under|below|less than|cheaper than|max|up to|до)\s*\$?\s*(\d+(?:[.,]\d+)?)/i,
-    /<\s*\$?\s*(\d+(?:[.,]\d+)?)/,
-    /\$\s*(\d+(?:[.,]\d+)?)\s*(?:or less|and under|max)/i,
-  ]
-  for (const re of patterns) {
+  for (const re of BUDGET_PATTERNS) {
     const m = input.match(re)
     if (m) {
       const value = Number.parseFloat(m[1].replace(',', '.'))
@@ -79,6 +80,16 @@ export function extractMaxPrice(input: string): number | null {
     }
   }
   return null
+}
+
+/**
+ * The query without its budget phrase. The budget is applied as a filter; left
+ * in the text, "under 60" would pull the embedding towards anything numeric.
+ */
+export function removeBudget(input: string): string {
+  return BUDGET_PATTERNS.reduce((text, re) => text.replace(re, ' '), input)
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 /** Field weights — a title hit says far more than a description hit. */
