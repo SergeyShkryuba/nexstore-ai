@@ -115,7 +115,7 @@ export default async function Home() {
 
 /** A barely-there rule between homepage sections. */
 function SectionDivider() {
-  return <hr className="my-12 border-border/40 md:my-16" />
+  return <hr className="my-12 border-foreground/10 md:my-16" />
 }
 
 function ProductShelf({
