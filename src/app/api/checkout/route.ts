@@ -22,7 +22,9 @@ const checkoutRequestSchema = z.object({
   items: z
     .array(
       z.object({
-        id: z.string().uuid(),
+        // guid(), not uuid(): Zod 4's uuid() requires an RFC version nibble and
+        // rejected every seeded product id ('00000000-…-000000000001').
+        id: z.guid(),
         quantity: z.number().int().min(1).max(99),
       }),
     )
