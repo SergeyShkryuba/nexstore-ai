@@ -31,7 +31,7 @@ export default async function WishlistPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-12 min-h-[60vh]">
+    <div className="container mx-auto px-4 py-12 min-h-[60vh] *:mx-auto *:max-w-7xl">
       <div className="flex items-center space-x-3 mb-8">
         <Heart className="w-8 h-8 text-primary" />
         <h1 className="text-3xl font-bold">Your Wishlist</h1>
