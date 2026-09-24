@@ -6,7 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { Toaster } from 'sonner';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+import { siteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
   // Required for relative OG/Twitter image URLs to resolve to absolute ones.
