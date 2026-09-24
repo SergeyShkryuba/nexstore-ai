@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
-import { AddToCartButton } from '@/components/product/AddToCartButton'
+import { ProductPurchase } from '@/components/product/ProductPurchase'
+import { sortVariants, type Variant } from '@/lib/variants'
 import { ProductCard } from '@/components/product/ProductCard'
 import { ProductGallery } from '@/components/product/ProductGallery'
 import { ReviewSection } from '@/components/product/ReviewSection'
@@ -60,7 +61,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   const { data: product } = await supabase
     .from('products')
-    .select('*, category:categories(name, slug)')
+    .select('*, category:categories(name, slug), variants:product_variants(id, size, inventory_count, sort_order)')
     .eq('slug', slug)
     .single()
   
@@ -69,10 +70,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
   }
 
   const category = product.category as { name: string; slug: string } | null
+  const variants = sortVariants(product.variants as Variant[] | null)
 
   const { data: relatedProducts } = await supabase
     .from('products')
-    .select('*')
+    .select('*, variants:product_variants(size, inventory_count)')
     .eq('category_id', product.category_id)
     .neq('id', product.id)
     .limit(4)
@@ -185,7 +187,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           </div>
 
           <div className="pt-4">
-            <AddToCartButton product={product} disabled={product.inventory_count <= 0} />
+            <ProductPurchase product={product} variants={variants} />
           </div>
         </div>
       </div>

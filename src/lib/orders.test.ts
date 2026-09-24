@@ -82,8 +82,8 @@ describe('orderItemsFromLineItems', () => {
         { quantity: 1, amount_total: 1990, price: { product: { metadata: { product_id: 'p2' } } } },
       ]),
     ).toEqual([
-      { product_id: 'p1', quantity: 2, unit_price: 29.99 },
-      { product_id: 'p2', quantity: 1, unit_price: 19.9 },
+      { product_id: 'p1', variant_id: null, variant_label: null, quantity: 2, unit_price: 29.99 },
+      { product_id: 'p2', variant_id: null, variant_label: null, quantity: 1, unit_price: 19.9 },
     ])
   })
 
@@ -98,7 +98,7 @@ describe('orderItemsFromLineItems', () => {
 
   it('never divides by a missing or zero quantity', () => {
     expect(orderItemsFromLineItems([{ quantity: null, amount_total: 1234, price: null }])).toEqual([
-      { product_id: null, quantity: 1, unit_price: 12.34 },
+      { product_id: null, variant_id: null, variant_label: null, quantity: 1, unit_price: 12.34 },
     ])
   })
 })
@@ -107,6 +107,20 @@ describe('orderItemsFromLineItems with a deleted Stripe product', () => {
   it('records the line without a product link', () => {
     expect(
       orderItemsFromLineItems([{ quantity: 1, amount_total: 900, price: { product: { id: 'prod_1', deleted: true } } }]),
-    ).toEqual([{ product_id: null, quantity: 1, unit_price: 9 }])
+    ).toEqual([{ product_id: null, variant_id: null, variant_label: null, quantity: 1, unit_price: 9 }])
+  })
+})
+
+describe('orderItemsFromLineItems with sizes', () => {
+  it('carries the size bought through to the order line', () => {
+    expect(
+      orderItemsFromLineItems([
+        {
+          quantity: 1,
+          amount_total: 2499,
+          price: { product: { metadata: { product_id: 'shirt', variant_id: 'v-m', variant_label: 'M' } } },
+        },
+      ]),
+    ).toEqual([{ product_id: 'shirt', variant_id: 'v-m', variant_label: 'M', quantity: 1, unit_price: 24.99 }])
   })
 })

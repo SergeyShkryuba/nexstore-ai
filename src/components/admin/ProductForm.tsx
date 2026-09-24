@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createProduct, updateProduct } from '@/app/actions/admin'
 import { ImageManager } from './ImageManager'
+import { SizesEditor, type SizeRow } from './SizesEditor'
+import { sortVariants } from '@/lib/variants'
 
 export type EditableProduct = {
   id: string
@@ -18,6 +20,7 @@ export type EditableProduct = {
   inventory_count: number
   category_id: string | null
   image_urls: string[] | null
+  variants?: { size: string; inventory_count: number; sort_order?: number | null }[] | null
 }
 
 const fieldClassName =
@@ -33,6 +36,10 @@ export function ProductForm({
 }) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [sizes, setSizes] = useState<SizeRow[]>(() =>
+    sortVariants(product?.variants).map(({ size, inventory_count }) => ({ size, inventory_count })),
+  )
+  const sizedTotal = sizes.reduce((sum, row) => sum + row.inventory_count, 0)
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -100,14 +107,21 @@ export function ProductForm({
 
         <div className="space-y-2">
           <Label htmlFor="inventory_count">Stock</Label>
-          <Input
-            id="inventory_count"
-            name="inventory_count"
-            type="number"
-            step="1"
-            min="0"
-            defaultValue={product?.inventory_count ?? 0}
-          />
+          {sizes.length > 0 ? (
+            // With sizes the total is their sum; the per-size stock is below.
+            <p id="inventory_count" className="flex h-8 items-center text-sm tabular-nums">
+              {sizedTotal} <span className="ml-1 text-muted-foreground">across sizes</span>
+            </p>
+          ) : (
+            <Input
+              id="inventory_count"
+              name="inventory_count"
+              type="number"
+              step="1"
+              min="0"
+              defaultValue={product?.inventory_count ?? 0}
+            />
+          )}
           <p className="text-xs text-muted-foreground">
             Available to sell. Units in open checkouts are already taken out.
           </p>
@@ -135,6 +149,11 @@ export function ProductForm({
           </select>
         </div>
       </div>
+
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium mb-2">Sizes</legend>
+        <SizesEditor rows={sizes} onChange={setSizes} />
+      </fieldset>
 
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium mb-2">Images</legend>

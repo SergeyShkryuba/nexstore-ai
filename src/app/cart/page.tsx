@@ -1,6 +1,6 @@
 'use client'
 
-import { useCartStore } from '@/store/useCartStore'
+import { lineKey, useCartStore } from '@/store/useCartStore'
 import { useCartHydrated } from '@/store/useCartHydrated'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -27,10 +27,10 @@ export default function CartPage() {
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // Only ids and quantities: the server re-reads prices from the
+        // Only ids, sizes and quantities: the server re-reads prices from the
         // database, so anything else we sent would be ignored anyway.
         body: JSON.stringify({
-          items: items.map((item) => ({ id: item.id, quantity: item.quantity })),
+          items: items.map((item) => ({ id: item.id, variantId: item.variantId ?? null, quantity: item.quantity })),
         }),
       })
 
@@ -80,7 +80,7 @@ export default function CartPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <ul className="lg:col-span-2 space-y-4">
             {items.map((item) => (
-              <li key={item.id}>
+              <li key={lineKey(item)}>
                 <Card>
                   <CardContent className="p-4 flex items-center gap-4">
                     {item.image_url ? (
@@ -98,14 +98,15 @@ export default function CartPage() {
                     )}
                     <div className="flex-1">
                       <h2 className="font-semibold">{item.title}</h2>
+                      {item.size && <p className="text-sm text-muted-foreground">Size {item.size}</p>}
                       <p className="text-primary font-bold">{formatPrice(item.price)}</p>
                     </div>
                     <div className="flex items-center space-x-2">
                       <Button
                         variant="outline"
                         size="icon"
-                        aria-label={`Decrease quantity of ${item.title}`}
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        aria-label={`Decrease quantity of ${item.title}${item.size ? ` size ${item.size}` : ''}`}
+                        onClick={() => updateQuantity(lineKey(item), item.quantity - 1)}
                       >
                         <Minus className="h-4 w-4" aria-hidden="true" />
                       </Button>
@@ -115,8 +116,8 @@ export default function CartPage() {
                       <Button
                         variant="outline"
                         size="icon"
-                        aria-label={`Increase quantity of ${item.title}`}
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        aria-label={`Increase quantity of ${item.title}${item.size ? ` size ${item.size}` : ''}`}
+                        onClick={() => updateQuantity(lineKey(item), item.quantity + 1)}
                       >
                         <Plus className="h-4 w-4" aria-hidden="true" />
                       </Button>
@@ -124,8 +125,8 @@ export default function CartPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      aria-label={`Remove ${item.title} from cart`}
-                      onClick={() => removeItem(item.id)}
+                      aria-label={`Remove ${item.title}${item.size ? ` size ${item.size}` : ''} from cart`}
+                      onClick={() => removeItem(lineKey(item))}
                       className="text-destructive"
                     >
                       <Trash2 className="h-5 w-5" aria-hidden="true" />
@@ -142,9 +143,10 @@ export default function CartPage() {
                 <h2 className="text-xl font-bold mb-4">Order Summary</h2>
                 <dl className="space-y-3 mb-4 text-sm">
                   {items.map((item) => (
-                    <div key={item.id} className="flex justify-between text-muted-foreground">
+                    <div key={lineKey(item)} className="flex justify-between text-muted-foreground">
                       <dt>
                         {item.quantity}× {item.title}
+                        {item.size && ` (${item.size})`}
                       </dt>
                       <dd>{formatPrice(item.price * item.quantity)}</dd>
                     </div>

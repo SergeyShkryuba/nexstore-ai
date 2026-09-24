@@ -23,6 +23,7 @@ export type SearchProduct = {
   price: number
   image_urls: string[] | null
   inventory_count?: number | null
+  variants?: { size: string; inventory_count: number; sort_order?: number | null }[] | null
 }
 
 type SearchResponse = {

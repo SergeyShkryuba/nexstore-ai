@@ -9,6 +9,7 @@ import { shippingLines } from '@/lib/orders'
 type OrderItemRow = {
   quantity: number
   unit_price: number
+  variant_label: string | null
   product: { title: string; slug: string } | null
 }
 
@@ -21,7 +22,7 @@ export default async function AdminOrdersPage() {
   const { data: orders, error } = await supabase
     .from('orders')
     .select(
-      'id, created_at, status, total_amount, customer_email, shipping_address, order_items(quantity, unit_price, product:products(title, slug))',
+      'id, created_at, status, total_amount, customer_email, shipping_address, order_items(quantity, unit_price, variant_label, product:products(title, slug))',
     )
     .order('created_at', { ascending: false })
     .limit(200)
@@ -86,6 +87,7 @@ export default async function AdminOrdersPage() {
                               ) : (
                                 <span className="text-muted-foreground">Deleted product</span>
                               )}
+                              {item.variant_label && <span className="font-medium"> ({item.variant_label})</span>}
                               <span className="text-muted-foreground"> · {formatPrice(item.unit_price)}</span>
                             </li>
                           ))}

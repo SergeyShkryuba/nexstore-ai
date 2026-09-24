@@ -49,19 +49,19 @@ insert into products (id, category_id, title, slug, description, price, inventor
    'Minimalist Cotton T-Shirt', 'cotton-tshirt',
    'Ultra-soft, 100% organic cotton t-shirt. Breathable and perfect for everyday wear.',
    24.99, 200, array['https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800&q=80', 'https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=800&q=80', 'https://images.unsplash.com/photo-1651761179569-4ba2aa054997?w=800&q=80', 'https://images.unsplash.com/photo-1622445275463-afa2ab738c34?w=800&q=80'],
-   '{"color": "White", "size": "M", "material": "Organic cotton"}'::jsonb),
+   '{"color": "White", "material": "Organic cotton"}'::jsonb),
 
   ('00000000-0000-0000-0000-000000000005', '22222222-2222-2222-2222-222222222222',
    'Classic Denim Jacket', 'denim-jacket',
    'Vintage-wash denim jacket with copper hardware and a relaxed fit.',
    89.99, 45, array['https://images.unsplash.com/photo-1576871337622-98d48d1cf531?w=800&q=80', 'https://images.unsplash.com/photo-1611312449408-fcece27cdbb7?w=800&q=80', 'https://images.unsplash.com/photo-1543076447-215ad9ba6923?w=800&q=80', 'https://images.unsplash.com/photo-1495105787522-5334e3ffa0ef?w=800&q=80'],
-   '{"color": "Blue", "size": "L", "material": "Denim"}'::jsonb),
+   '{"color": "Blue", "material": "Denim"}'::jsonb),
 
   ('00000000-0000-0000-0000-000000000009', '22222222-2222-2222-2222-222222222222',
    'Merino Wool Sweater', 'merino-sweater',
    'Fine-knit merino wool sweater that stays warm without the bulk. A good layer for cold evenings.',
    119.00, 35, array['https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=800&q=80', 'https://images.unsplash.com/photo-1574201635302-388dd92a4c3f?w=800&q=80', 'https://images.unsplash.com/photo-1601379327928-bedfaf9da2d0?w=800&q=80', 'https://images.unsplash.com/photo-1610901157620-340856d0a50f?w=800&q=80'],
-   '{"color": "Red", "size": "M", "material": "Merino wool", "season": "winter"}'::jsonb),
+   '{"color": "Red", "material": "Merino wool", "season": "winter"}'::jsonb),
 
   -- Smart Home
   ('00000000-0000-0000-0000-000000000006', '33333333-3333-3333-3333-333333333333',
@@ -90,3 +90,25 @@ on conflict (id) do update
       inventory_count = excluded.inventory_count,
       image_urls      = excluded.image_urls,
       attributes      = excluded.attributes;
+
+-- Demo sizes for the clothing, adding up to each item's previous stock.
+-- Size moves out of the attributes, where each item had exactly one.
+insert into product_variants (product_id, size, inventory_count, sort_order)
+select p.id, v.size, v.stock, v.position
+from products p
+join (values
+  ('cotton-tshirt', 'S', 40, 0), ('cotton-tshirt', 'M', 60, 1), ('cotton-tshirt', 'L', 60, 2), ('cotton-tshirt', 'XL', 40, 3),
+  ('denim-jacket', 'S', 10, 0), ('denim-jacket', 'M', 15, 1), ('denim-jacket', 'L', 15, 2), ('denim-jacket', 'XL', 5, 3),
+  ('merino-sweater', 'S', 8, 0), ('merino-sweater', 'M', 12, 1), ('merino-sweater', 'L', 10, 2), ('merino-sweater', 'XL', 5, 3)
+) as v(slug, size, stock, position) on p.slug = v.slug
+on conflict (product_id, size) do nothing;
+
+update products set attributes = attributes - 'size' where attributes ? 'size';
+
+-- The upsert above resets inventory_count for products sold in sizes; bring
+-- the totals back in line with their sizes (the trigger only fires when a
+-- size row changes).
+update products p
+set inventory_count = v.total
+from (select product_id, sum(inventory_count) as total from product_variants group by product_id) v
+where v.product_id = p.id;

@@ -125,7 +125,14 @@ type LineItemLike = {
   price?: { product?: unknown } | null
 }
 
-export type PaidLine = { product_id: string | null; quantity: number; unit_price: number }
+export type PaidLine = {
+  product_id: string | null
+  /** The size bought, for products sold in sizes. */
+  variant_id: string | null
+  variant_label: string | null
+  quantity: number
+  unit_price: number
+}
 
 /**
  * Order lines from a paid session's line items (with `price.product`
@@ -144,6 +151,8 @@ export function orderItemsFromLineItems(items: readonly LineItemLike[]): PaidLin
     const quantity = item.quantity && item.quantity > 0 ? item.quantity : 1
     return {
       product_id: productId,
+      variant_id: metadata?.variant_id || null,
+      variant_label: metadata?.variant_label || null,
       quantity,
       // What was actually paid per unit, in euros.
       unit_price: Math.round(item.amount_total / quantity) / 100,

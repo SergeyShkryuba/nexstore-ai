@@ -369,6 +369,158 @@ create policy "Admins delete product images"
   on storage.objects for delete to authenticated
   using (bucket_id = 'product-images' and public.is_admin());
 
+-- ===================== Product variants (sizes) ============================
+-- A product sold in sizes has one row per size here, each with its own stock.
+-- products.inventory_count stays the total across sizes (kept by a trigger),
+-- so cards, the in-stock filter and the admin list read it unchanged.
+-- A product with no rows here is sold without a size, as before.
+
+create table if not exists product_variants (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid not null references products(id) on delete cascade,
+  size text not null check (char_length(size) between 1 and 20),
+  inventory_count integer not null default 0 check (inventory_count >= 0),
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  unique (product_id, size)
+);
+
+create index if not exists idx_product_variants_product on product_variants (product_id);
+
+alter table product_variants enable row level security;
+
+drop policy if exists "Variants are viewable by everyone" on product_variants;
+create policy "Variants are viewable by everyone"
+  on product_variants for select using (true);
+
+drop policy if exists "Admins manage variants" on product_variants;
+create policy "Admins manage variants"
+  on product_variants for all using (public.is_admin()) with check (public.is_admin());
+
+-- The size bought, kept on the order line: variant_id links to the size
+-- while it exists; variant_label keeps "M" even after the size is removed.
+alter table order_items add column if not exists variant_id uuid references product_variants(id) on delete set null;
+alter table order_items add column if not exists variant_label text;
+
+-- products.inventory_count = sum of its sizes' stock, whenever a size changes.
+create or replace function public.sync_product_stock()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_product_id uuid := coalesce(new.product_id, old.product_id);
+begin
+  update products
+  set inventory_count = coalesce(
+    (select sum(inventory_count) from product_variants where product_id = v_product_id), 0)
+  where id = v_product_id;
+  return null;
+end;
+$$;
+
+drop trigger if exists product_variants_sync_stock on product_variants;
+create trigger product_variants_sync_stock
+  after insert or delete or update of inventory_count on product_variants
+  for each row execute function public.sync_product_stock();
+
+-- Replaces a product's sizes with the given list, in order, in one
+-- transaction. Sizes are matched by name: a listed size keeps its row (and
+-- its id on past orders), an unlisted one is removed. Runs as the caller, so
+-- RLS applies; the explicit check turns a non-admin call into a clear error.
+create or replace function public.set_product_variants(p_product_id uuid, p_variants jsonb)
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_variant jsonb;
+  v_position integer := 0;
+begin
+  if not public.is_admin() then
+    raise exception 'forbidden';
+  end if;
+
+  delete from product_variants
+  where product_id = p_product_id
+    and size not in (
+      select value ->> 'size' from jsonb_array_elements(coalesce(p_variants, '[]'::jsonb))
+    );
+
+  for v_variant in select value from jsonb_array_elements(coalesce(p_variants, '[]'::jsonb)) loop
+    insert into product_variants (product_id, size, inventory_count, sort_order)
+    values (p_product_id, v_variant ->> 'size', (v_variant ->> 'inventory_count')::integer, v_position)
+    on conflict (product_id, size) do update
+      set inventory_count = excluded.inventory_count,
+          sort_order = excluded.sort_order;
+    v_position := v_position + 1;
+  end loop;
+end;
+$$;
+
+revoke all on function public.set_product_variants(uuid, jsonb) from public, anon;
+grant execute on function public.set_product_variants(uuid, jsonb) to authenticated, service_role;
+
+-- Saves a product and its sizes as one transaction, so a failure can never
+-- leave new text with old sizes (or the reverse). p_product_id null creates.
+-- p_variants null leaves sizes untouched; an empty array removes them all.
+-- Stock: with sizes, the total is the sum of the sizes (trigger); without,
+-- it is p_fields.inventory_count. Runs as the caller: RLS applies.
+create or replace function public.save_product(p_product_id uuid, p_fields jsonb, p_variants jsonb default null)
+returns uuid
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_id uuid := p_product_id;
+  v_images text[] := coalesce(array(select jsonb_array_elements_text(p_fields -> 'image_urls')), '{}');
+begin
+  if not public.is_admin() then
+    raise exception 'forbidden';
+  end if;
+
+  if v_id is null then
+    insert into products (title, slug, description, price, inventory_count, category_id, image_urls)
+    values (
+      p_fields ->> 'title', p_fields ->> 'slug', p_fields ->> 'description',
+      (p_fields ->> 'price')::numeric, coalesce((p_fields ->> 'inventory_count')::integer, 0),
+      (p_fields ->> 'category_id')::uuid, v_images
+    )
+    returning id into v_id;
+  else
+    -- The slug is kept on purpose: renaming must not break links.
+    update products
+    set title = p_fields ->> 'title',
+        description = p_fields ->> 'description',
+        price = (p_fields ->> 'price')::numeric,
+        category_id = (p_fields ->> 'category_id')::uuid,
+        image_urls = v_images
+    where id = v_id;
+    if not found then
+      raise exception 'product_not_found';
+    end if;
+  end if;
+
+  if p_variants is not null then
+    perform public.set_product_variants(v_id, p_variants);
+  end if;
+
+  if not exists (select 1 from product_variants where product_id = v_id) then
+    update products
+    set inventory_count = coalesce((p_fields ->> 'inventory_count')::integer, inventory_count)
+    where id = v_id;
+  end if;
+
+  return v_id;
+end;
+$$;
+
+revoke all on function public.save_product(uuid, jsonb, jsonb) from public, anon;
+grant execute on function public.save_product(uuid, jsonb, jsonb) to authenticated, service_role;
+
 -- ================= Stock reservations and paid orders ======================
 -- Checkout reserves stock before sending the shopper to Stripe, so two people
 -- cannot both buy the last unit.
@@ -428,9 +580,16 @@ begin
   end if;
 
   for v_item in select * from jsonb_array_elements(v_items) loop
-    update products
-    set inventory_count = inventory_count + (v_item ->> 'quantity')::integer
-    where id = (v_item ->> 'product_id')::uuid;
+    if nullif(v_item ->> 'variant_id', '') is not null then
+      -- The size's stock; the trigger updates the product's total.
+      update product_variants
+      set inventory_count = inventory_count + (v_item ->> 'quantity')::integer
+      where id = (v_item ->> 'variant_id')::uuid;
+    else
+      update products
+      set inventory_count = inventory_count + (v_item ->> 'quantity')::integer
+      where id = (v_item ->> 'product_id')::uuid;
+    end if;
   end loop;
 
   return true;
@@ -460,9 +619,12 @@ begin
 end;
 $$;
 
--- All lines or none. The conditional UPDATE locks each product row, so
--- concurrent checkouts for the same product queue up instead of overselling.
--- Raises 'insufficient_stock' with the product id in the detail.
+-- All lines or none. The conditional UPDATE locks each product (or size) row,
+-- so concurrent checkouts for the same item queue up instead of overselling.
+-- Lines are taken in a fixed order (product, then size) so two carts holding
+-- the same items can never lock them in opposite orders and deadlock.
+-- Raises 'insufficient_stock', or 'variant_required' for a product sold in
+-- sizes when no size was given, with the product id in the detail.
 create or replace function public.reserve_stock(p_items jsonb, p_ttl_seconds integer)
 returns uuid
 language plpgsql
@@ -472,6 +634,7 @@ as $$
 declare
   v_item jsonb;
   v_product_id uuid;
+  v_variant_id uuid;
   v_quantity integer;
   v_reservation_id uuid;
 begin
@@ -482,16 +645,30 @@ begin
   -- Stock stuck in abandoned checkouts comes back before we count it.
   perform public.release_expired_reservations();
 
-  for v_item in select * from jsonb_array_elements(p_items) loop
+  for v_item in
+    select value from jsonb_array_elements(p_items)
+    order by value ->> 'product_id', coalesce(value ->> 'variant_id', '')
+  loop
     v_product_id := (v_item ->> 'product_id')::uuid;
+    v_variant_id := nullif(v_item ->> 'variant_id', '')::uuid;
     v_quantity := (v_item ->> 'quantity')::integer;
     if v_quantity is null or v_quantity < 1 then
       raise exception 'invalid_quantity';
     end if;
 
-    update products
-    set inventory_count = inventory_count - v_quantity
-    where id = v_product_id and inventory_count >= v_quantity;
+    if v_variant_id is not null then
+      -- The size must belong to this product; the trigger updates the total.
+      update product_variants
+      set inventory_count = inventory_count - v_quantity
+      where id = v_variant_id and product_id = v_product_id and inventory_count >= v_quantity;
+    else
+      if exists (select 1 from product_variants where product_id = v_product_id) then
+        raise exception 'variant_required' using detail = v_product_id::text;
+      end if;
+      update products
+      set inventory_count = inventory_count - v_quantity
+      where id = v_product_id and inventory_count >= v_quantity;
+    end if;
 
     if not found then
       raise exception 'insufficient_stock' using detail = v_product_id::text;
@@ -550,6 +727,7 @@ declare
   v_order_id uuid;
   v_item jsonb;
   v_product_id uuid;
+  v_variant_id uuid;
   v_quantity integer;
   v_reserved boolean := false;
 begin
@@ -574,15 +752,28 @@ begin
 
   for v_item in select * from jsonb_array_elements(coalesce(p_items, '[]'::jsonb)) loop
     v_product_id := (select id from products where id = (v_item ->> 'product_id')::uuid);
+    v_variant_id := (
+      select id from product_variants
+      where id = nullif(v_item ->> 'variant_id', '')::uuid and product_id = v_product_id
+    );
     v_quantity := (v_item ->> 'quantity')::integer;
 
-    insert into order_items (order_id, product_id, quantity, unit_price)
-    values (v_order_id, v_product_id, v_quantity, (v_item ->> 'unit_price')::numeric);
+    insert into order_items (order_id, product_id, variant_id, variant_label, quantity, unit_price)
+    values (
+      v_order_id, v_product_id, v_variant_id, nullif(v_item ->> 'variant_label', ''),
+      v_quantity, (v_item ->> 'unit_price')::numeric
+    );
 
     if v_product_id is not null and not v_reserved then
-      update products
-      set inventory_count = greatest(0, inventory_count - v_quantity)
-      where id = v_product_id;
+      if v_variant_id is not null then
+        update product_variants
+        set inventory_count = greatest(0, inventory_count - v_quantity)
+        where id = v_variant_id;
+      else
+        update products
+        set inventory_count = greatest(0, inventory_count - v_quantity)
+        where id = v_product_id;
+      end if;
     end if;
   end loop;
 

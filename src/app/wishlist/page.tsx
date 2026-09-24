@@ -25,7 +25,7 @@ export default async function WishlistPage() {
   if (productIds.length > 0) {
     const { data } = await supabase
       .from('products')
-      .select('*')
+      .select('*, variants:product_variants(size, inventory_count, sort_order)')
       .in('id', productIds)
     products = data || []
   }

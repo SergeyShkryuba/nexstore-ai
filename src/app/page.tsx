@@ -11,7 +11,7 @@ export const revalidate = 300
 /** The "budget picks" shelf; its link opens the catalogue with the same filter. */
 const BUDGET = 50
 
-const CARD_FIELDS = 'id, title, slug, price, image_urls, inventory_count'
+const CARD_FIELDS = 'id, title, slug, price, image_urls, inventory_count, variants:product_variants(size, inventory_count, sort_order)'
 
 /** Dark, edge-weighted photos: the props sit at the borders, the cards in the middle. */
 const SHELF_IMAGES = {
