@@ -6,6 +6,13 @@
 
 import { cartLineKey } from './variants'
 
+/**
+ * Most units of one product (or size) in one order. Checkout holds the units
+ * while the shopper pays, so this also bounds how much of the shelf a single
+ * checkout can take off sale. The cart enforces the same number.
+ */
+export const MAX_UNITS_PER_LINE = 10
+
 export type RequestedItem = { id: string; variantId?: string | null; quantity: number }
 
 export type CatalogueProduct = {

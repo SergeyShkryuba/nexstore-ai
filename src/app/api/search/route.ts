@@ -4,6 +4,8 @@ import { createClient } from '@/utils/supabase/server'
 import { rankProducts, extractMaxPrice, removeBudget, type SearchableProduct } from '@/lib/search'
 import { fuseResults, type SemanticMatch } from '@/lib/hybrid'
 import { embedTexts, toPgVector } from '@/lib/embeddings'
+import { clientIp, hitLimit } from '@/lib/rate-limit'
+import { createServiceClient } from '@/utils/supabase/service'
 
 export const runtime = 'nodejs'
 
@@ -66,6 +68,17 @@ async function semanticMatches(
 
 export async function POST(req: Request) {
   const startedAt = Date.now()
+
+  // Every search calls the embedding Edge Function; a flood would burn through
+  // the project's function quota. Type-ahead (/api/search/suggest) is lexical
+  // and CDN-cached, so it is not limited.
+  const limited = await hitLimit(createServiceClient(), 'search', clientIp(req.headers))
+  if (!limited.allowed) {
+    return NextResponse.json(
+      { error: 'Too many searches. Please wait a moment and try again.' },
+      { status: 429, headers: { 'Retry-After': String(limited.retryAfterSeconds) } },
+    )
+  }
 
   let body: unknown
   try {

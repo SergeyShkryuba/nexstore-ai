@@ -39,6 +39,11 @@ TypeScript, Tailwind CSS v4 and Supabase, with Stripe Checkout for payments.
   rating is computed from the reviews that actually exist.
 - **Admin panel** — dashboard and product creation, gated on `profiles.role`
   both in the UI and in the RLS policies.
+- **Abuse limits** — checkout and search are rate-limited per visitor, one
+  shopper can hold at most three checkouts open, and an order takes at most ten
+  of one item, so nobody can take the shelf off sale by opening checkouts.
+- **Error monitoring** — optional Sentry, scrubbed of cookies, IPs, emails,
+  query strings and anything shaped like a key before it leaves.
 
 ## Architecture notes
 
@@ -53,6 +58,30 @@ separate — `src/utils/supabase/public.ts` vs `src/utils/supabase/server.ts`.
 accepts `{ id, quantity }[]`, validates it with Zod, then loads titles, prices
 and stock from Postgres and builds the Stripe line items from those. Sending a
 tampered price has no effect.
+
+**Rate limiting** (`src/lib/rate-limit.ts`, `rate_limit_hit()` in
+`schema.sql`). Serverless instances share no memory, so the counters live in
+Postgres: one atomic upsert per request into a fixed window, 10 checkouts per
+10 minutes and 30 searches per minute per IP. Keys are HMACs of the IP (or
+account id), so the table holds no addresses; the daily cron deletes old
+windows. The limiter fails open — if the counter is unreachable, the request
+goes through and the error is logged. Separately, `reserve_stock()` refuses a
+fourth open checkout from the same shopper, under a per-shopper advisory lock
+so parallel requests cannot all slip under the cap.
+
+**Content Security Policy** (`next.config.ts`). Static, not nonce-based: a
+nonce forces every page to render per request, which would give up ISR. So
+inline scripts are allowed (the App Router streams its payload in them), and
+the policy's work is everywhere else: `connect-src` and `img-src` reach only
+this site, Supabase and Sentry, and there is no framing, no plugins, no
+`<base>` and no cross-site form posts.
+
+**Error monitoring** (`src/instrumentation.ts`, `src/instrumentation-client.ts`,
+`src/lib/sentry.ts`). Set `NEXT_PUBLIC_SENTRY_DSN` to turn it on; unset, the SDK
+is never imported and adds nothing to the bundle. The server also reports
+errors that routes catch and log with `console.error`, since those are most of
+the failures that matter (a declined webhook, an unreachable database). Every
+event passes a scrubber first; it is unit-tested.
 
 **Row Level Security** is on for every table. `order_items` is readable only
 through its parent order, wishlists are strictly private, and admin access is
@@ -121,6 +150,13 @@ update profiles set role = 'admin' where id = '<your auth.users id>';
 traffic, and one paused for 90 days cannot be restored. `vercel.json` schedules
 a daily Vercel Cron call to `GET /api/keepalive`, which makes one cheap read.
 Set `CRON_SECRET` in the Vercel project so only the scheduler can call it.
+The same call releases expired stock reservations and deletes old
+rate-limit counters.
+
+**Updating an existing database.** `schema.sql` is idempotent: re-run the
+whole file in the SQL editor *before* deploying code that needs it. Database
+functions keep accepting the arguments older code sends, so the running site
+keeps working in between.
 
 ### Stripe (optional)
 
@@ -170,6 +206,12 @@ events — the last three are what put reserved stock back on sale:
 - `src/components/product/ProductCard.test.tsx` — rendering, the add-to-cart
   path against the real store, and the missing-image fallback.
 - `src/lib/format.test.ts` — currency formatting and rating averages.
+- `src/lib/rate-limit.test.ts` — client IP resolution, that limiter keys never
+  contain the raw IP, the retry window, and failing open.
+- `src/lib/sentry.test.ts` — the scrubber: keys, JWTs, session ids, cookies,
+  headers, emails and query strings never reach an error report.
+- `src/app/api/checkout/route.test.ts` — also: a flood is stopped before any
+  read, reservation or Stripe call, and a fourth open checkout is refused.
 
 ## Known limitations
 
@@ -181,6 +223,15 @@ Listed rather than hidden:
   larger or different catalogue should be re-checked.
 - Units in an open checkout are unavailable to others for up to ~36 minutes
   (Stripe's minimum session life plus a margin) if the shopper walks away.
+  The per-shopper cap bounds this, but someone with many IP addresses could
+  still hold stock; and a shopper who abandons three checkouts in a row waits
+  for them to expire before a fourth.
+- Rate limits are per IP for visitors who are not signed in, so people behind
+  one address (an office, a carrier's NAT) share them.
+- The Content Security Policy allows inline scripts (see Architecture notes);
+  it limits where an injected script could send data, not whether it runs.
+- The store sends no email of its own. Stripe emails receipts for live-mode
+  payments only.
 - The reservation SQL is exercised against a real database by hand; the unit
   tests cover the TypeScript around it, not the functions themselves.
 - No end-to-end browser tests; the Stripe flow is tested with mocked Stripe

@@ -50,6 +50,16 @@ describe('useCartStore', () => {
     expect(items[0].quantity).toBe(5)
   })
 
+  it('never holds more of one item than checkout accepts', () => {
+    const item = { id: '1', title: 'Test Product', price: 100, quantity: 8 }
+    useCartStore.getState().addItem(item)
+    useCartStore.getState().addItem(item)
+    expect(useCartStore.getState().items[0].quantity).toBe(10)
+
+    useCartStore.getState().updateQuantity('1', 50)
+    expect(useCartStore.getState().items[0].quantity).toBe(10)
+  })
+
   it('should remove item if quantity is updated to 0', () => {
     const item = { id: '1', title: 'Test Product', price: 100, quantity: 1 }
     useCartStore.getState().addItem(item)

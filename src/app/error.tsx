@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle } from 'lucide-react'
+import { reportClientError } from '@/lib/sentry'
 
 export default function GlobalError({
   error,
@@ -12,8 +13,10 @@ export default function GlobalError({
   reset: () => void
 }) {
   useEffect(() => {
-    // In a real deployment this is where Sentry/console reporting would go.
     console.error('Unhandled application error:', error)
+    // Error boundaries swallow the error, so the SDK's global handlers never
+    // see it. No-op unless Sentry is configured.
+    reportClientError(error)
   }, [error])
 
   return (

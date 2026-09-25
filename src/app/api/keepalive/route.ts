@@ -35,12 +35,18 @@ export async function GET(req: Request) {
   // arrived. Only ever releases reservations past their expiry, so it is
   // harmless even if the route were called by someone else.
   let released: number | null = null
+  let purged: number | null = null
   const service = createServiceClient()
   if (service) {
     const { data, error: releaseError } = await service.rpc('release_expired_reservations')
     if (releaseError) console.error('Keep-alive: releasing expired reservations failed', releaseError)
     else released = data as number
+
+    // Rate-limit counters older than a day (see "Rate limiting" in schema.sql).
+    const { data: purgedRows, error: purgeError } = await service.rpc('purge_rate_limits')
+    if (purgeError) console.error('Keep-alive: purging rate-limit counters failed', purgeError)
+    else purged = purgedRows as number
   }
 
-  return NextResponse.json({ ok: true, categories: count, released, at: new Date().toISOString() })
+  return NextResponse.json({ ok: true, categories: count, released, purged, at: new Date().toISOString() })
 }

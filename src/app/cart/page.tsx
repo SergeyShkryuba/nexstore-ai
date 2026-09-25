@@ -11,6 +11,7 @@ import { Trash2, Plus, Minus, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { formatPrice } from '@/lib/format'
+import { MAX_UNITS_PER_LINE } from '@/lib/checkout-lines'
 
 export default function CartPage() {
   const hydrated = useCartHydrated()
@@ -117,6 +118,8 @@ export default function CartPage() {
                         variant="outline"
                         size="icon"
                         aria-label={`Increase quantity of ${item.title}${item.size ? ` size ${item.size}` : ''}`}
+                        disabled={item.quantity >= MAX_UNITS_PER_LINE}
+                        title={item.quantity >= MAX_UNITS_PER_LINE ? `At most ${MAX_UNITS_PER_LINE} per order` : undefined}
                         onClick={() => updateQuantity(lineKey(item), item.quantity + 1)}
                       >
                         <Plus className="h-4 w-4" aria-hidden="true" />

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // --- Stripe --------------------------------------------------------------------
 const createSession = vi.fn()
@@ -30,7 +30,7 @@ const checkout = (quantity = 1) =>
   POST(
     new Request('http://shop.test/api/checkout', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', origin: 'http://shop.test' },
+      headers: { 'Content-Type': 'application/json', origin: 'http://shop.test', 'x-real-ip': '203.0.113.7' },
       body: JSON.stringify({ items: [{ id: PRODUCT, quantity }] }),
     }),
   )
@@ -99,6 +99,77 @@ describe('POST /api/checkout', () => {
 
     expect(res.status).toBe(409)
     expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('refuses more units of one item than an order may hold', async () => {
+    const res = await checkout(11)
+
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toContain('At most 10')
+    expect(rpc).not.toHaveBeenCalled()
+  })
+})
+
+describe('POST /api/checkout limits', () => {
+  const limiter = (allowed: boolean | 'error') =>
+    rpc.mockImplementation(async (fn: string) => {
+      if (fn === 'rate_limit_hit') {
+        return allowed === 'error'
+          ? { data: null, error: { code: 'PGRST202', message: 'Could not find the function' } }
+          : { data: allowed, error: null }
+      }
+      return fn === 'reserve_stock' ? { data: RESERVATION, error: null } : { data: true, error: null }
+    })
+
+  beforeEach(() => {
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'service-key')
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('stops a flood before reading, reserving or reaching Stripe', async () => {
+    limiter(false)
+    const res = await checkout()
+
+    expect(res.status).toBe(429)
+    expect(Number(res.headers.get('Retry-After'))).toBeGreaterThan(0)
+    expect(productRows).not.toHaveBeenCalled()
+    expect(rpc).not.toHaveBeenCalledWith('reserve_stock', expect.anything())
+    expect(createSession).not.toHaveBeenCalled()
+  })
+
+  it('caps how many checkouts one shopper holds open, keyed without the raw IP', async () => {
+    limiter(true)
+    const res = await checkout()
+
+    expect(res.status).toBe(200)
+    const [, args] = rpc.mock.calls.find(([fn]) => fn === 'reserve_stock')!
+    expect(args.p_max_held).toBe(3)
+    expect(typeof args.p_owner_key).toBe('string')
+    expect(args.p_owner_key).not.toContain('203.0.113.7')
+  })
+
+  it('refuses a fourth open checkout without reaching Stripe', async () => {
+    rpc.mockImplementation(async (fn: string) =>
+      fn === 'reserve_stock'
+        ? { data: null, error: { message: 'too_many_reservations' } }
+        : { data: true, error: null },
+    )
+    const res = await checkout()
+
+    expect(res.status).toBe(429)
+    expect((await res.json()).error).toContain('checkouts open')
+    expect(createSession).not.toHaveBeenCalled()
+  })
+
+  it('keeps selling when the limiter itself is unavailable', async () => {
+    limiter('error')
+    const res = await checkout()
+
+    expect(res.status).toBe(200)
+    expect(createSession).toHaveBeenCalled()
   })
 })
 
