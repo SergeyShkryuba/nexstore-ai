@@ -171,7 +171,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                 </p>
               )}
               {order.customer_email && (
-                <p className="text-muted-foreground">Receipt sent to {order.customer_email}</p>
+                // Not "receipt sent to": the store sends no email of its own, and
+                // Stripe does not email receipts for test-mode payments.
+                <p className="text-muted-foreground">Contact email: {order.customer_email}</p>
               )}
             </CardContent>
           </Card>
