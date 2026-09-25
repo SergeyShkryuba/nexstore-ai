@@ -1,6 +1,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { cartLineKey } from '@/lib/variants'
+import { MAX_UNITS_PER_LINE } from '@/lib/checkout-lines'
+
+/** Checkout refuses more than this per line, so the cart never holds more. */
+const capQuantity = (quantity: number) => Math.min(quantity, MAX_UNITS_PER_LINE)
 
 export type CartItem = {
   /** Product id. */
@@ -39,11 +43,11 @@ export const useCartStore = create<CartState>()(
           if (existing) {
             return {
               items: state.items.map((i) =>
-                lineKey(i) === key ? { ...i, quantity: i.quantity + newItem.quantity } : i
+                lineKey(i) === key ? { ...i, quantity: capQuantity(i.quantity + newItem.quantity) } : i
               ),
             }
           }
-          return { items: [...state.items, newItem] }
+          return { items: [...state.items, { ...newItem, quantity: capQuantity(newItem.quantity) }] }
         })
       },
       removeItem: (key) => {
@@ -54,7 +58,7 @@ export const useCartStore = create<CartState>()(
       updateQuantity: (key, quantity) => {
         set((state) => ({
           items: state.items.map((i) =>
-            lineKey(i) === key ? { ...i, quantity: Math.max(0, quantity) } : i
+            lineKey(i) === key ? { ...i, quantity: capQuantity(Math.max(0, quantity)) } : i
           ).filter(i => i.quantity > 0),
         }))
       },

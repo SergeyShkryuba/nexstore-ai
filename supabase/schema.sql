@@ -550,6 +550,13 @@ create table if not exists stock_reservations (
 create index if not exists idx_stock_reservations_held
   on stock_reservations (expires_at) where status = 'held';
 
+-- Who opened the checkout: an HMAC of the user id or IP (never the raw value),
+-- so reserve_stock() can cap how many checkouts one shopper holds open.
+alter table stock_reservations add column if not exists owner_key text;
+
+create index if not exists idx_stock_reservations_owner_held
+  on stock_reservations (owner_key) where status = 'held';
+
 alter table stock_reservations enable row level security;
 
 -- Written only through the functions below (service role). Admins may read,
@@ -628,7 +635,22 @@ $$;
 -- the same items can never lock them in opposite orders and deadlock.
 -- Raises 'insufficient_stock', or 'variant_required' for a product sold in
 -- sizes when no size was given, with the product id in the detail.
-create or replace function public.reserve_stock(p_items jsonb, p_ttl_seconds integer)
+--
+-- With p_owner_key and p_max_held, raises 'too_many_reservations' when that
+-- owner already holds p_max_held open checkouts — otherwise one visitor could
+-- take the whole shelf off sale for half an hour at a time. A per-owner
+-- advisory lock makes the count and the insert one step, so parallel requests
+-- cannot all slip under the cap. Both default to null, so a caller that still
+-- passes only (p_items, p_ttl_seconds) keeps working while code and database
+-- are updated at different moments.
+drop function if exists public.reserve_stock(jsonb, integer);
+
+create or replace function public.reserve_stock(
+  p_items jsonb,
+  p_ttl_seconds integer,
+  p_owner_key text default null,
+  p_max_held integer default null
+)
 returns uuid
 language plpgsql
 security definer
@@ -647,6 +669,18 @@ begin
 
   -- Stock stuck in abandoned checkouts comes back before we count it.
   perform public.release_expired_reservations();
+
+  -- Taken before any product row, always in that order, so it cannot deadlock
+  -- with the row locks below.
+  if p_owner_key is not null and p_max_held is not null then
+    perform pg_advisory_xact_lock(hashtext('reserve_stock:' || p_owner_key));
+    if (
+      select count(*) from stock_reservations
+      where owner_key = p_owner_key and status = 'held' and expires_at > now()
+    ) >= p_max_held then
+      raise exception 'too_many_reservations';
+    end if;
+  end if;
 
   for v_item in
     select value from jsonb_array_elements(p_items)
@@ -678,8 +712,8 @@ begin
     end if;
   end loop;
 
-  insert into stock_reservations (items, expires_at)
-  values (p_items, now() + make_interval(secs => greatest(p_ttl_seconds, 60)))
+  insert into stock_reservations (items, expires_at, owner_key)
+  values (p_items, now() + make_interval(secs => greatest(p_ttl_seconds, 60)), p_owner_key)
   returning id into v_reservation_id;
 
   return v_reservation_id;
@@ -788,13 +822,77 @@ end;
 $$;
 
 -- Only the server (service role) may reserve, release or record payments.
-revoke all on function public.reserve_stock(jsonb, integer) from public, anon, authenticated;
+revoke all on function public.reserve_stock(jsonb, integer, text, integer) from public, anon, authenticated;
 revoke all on function public.release_reservation(uuid) from public, anon, authenticated;
 revoke all on function public.release_expired_reservations() from public, anon, authenticated;
 revoke all on function public.extend_reservation(uuid, timestamptz) from public, anon, authenticated;
 revoke all on function public.record_paid_order(text, uuid, text, numeric, jsonb, jsonb, uuid) from public, anon, authenticated;
-grant execute on function public.reserve_stock(jsonb, integer) to service_role;
+grant execute on function public.reserve_stock(jsonb, integer, text, integer) to service_role;
 grant execute on function public.release_reservation(uuid) to service_role;
 grant execute on function public.release_expired_reservations() to service_role;
 grant execute on function public.extend_reservation(uuid, timestamptz) to service_role;
 grant execute on function public.record_paid_order(text, uuid, text, numeric, jsonb, jsonb, uuid) to service_role;
+
+-- ================= Rate limiting ============================================
+-- Fixed-window request counters for the routes that cost something: checkout
+-- (reserves stock, opens a Stripe session) and search (calls the embedding
+-- Edge Function). Keys are HMACs computed by the app, so no IP address or user
+-- id is stored. Serverless instances share nothing in memory; Postgres is the
+-- one place every instance sees.
+
+create table if not exists rate_limits (
+  key text not null,
+  window_start timestamptz not null,
+  hits integer not null default 0,
+  primary key (key, window_start)
+);
+
+-- No policies: only the service role (which bypasses RLS) touches it.
+alter table rate_limits enable row level security;
+
+-- Counts one hit and says whether it is within the limit. The upsert is a
+-- single atomic statement, so parallel requests cannot both read "limit - 1".
+-- A fixed window allows up to twice the limit across a window boundary; that
+-- is accepted for a limit whose job is to stop floods, not to meter.
+create or replace function public.rate_limit_hit(p_key text, p_limit integer, p_window_seconds integer)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_window timestamptz;
+  v_hits integer;
+begin
+  if p_key is null or p_limit < 1 or p_window_seconds < 1 then
+    raise exception 'invalid_rate_limit';
+  end if;
+
+  v_window := to_timestamp(floor(extract(epoch from now()) / p_window_seconds) * p_window_seconds);
+
+  insert into rate_limits (key, window_start, hits)
+  values (p_key, v_window, 1)
+  on conflict (key, window_start) do update set hits = rate_limits.hits + 1
+  returning hits into v_hits;
+
+  return v_hits <= p_limit;
+end;
+$$;
+
+-- Old windows are useless; the daily cron clears them.
+create or replace function public.purge_rate_limits()
+returns integer
+language sql
+security definer
+set search_path = public
+as $$
+  with gone as (
+    delete from rate_limits where window_start < now() - interval '1 day' returning 1
+  )
+  select count(*)::integer from gone;
+$$;
+
+revoke all on function public.rate_limit_hit(text, integer, integer) from public, anon, authenticated;
+revoke all on function public.purge_rate_limits() from public, anon, authenticated;
+grant execute on function public.rate_limit_hit(text, integer, integer) to service_role;
+grant execute on function public.purge_rate_limits() to service_role;

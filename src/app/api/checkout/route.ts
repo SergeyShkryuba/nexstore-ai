@@ -5,7 +5,8 @@ import { createClient } from '@/utils/supabase/server'
 import { siteUrl } from '@/lib/site'
 import { EU_COUNTRIES } from '@/lib/orders'
 import { CHECKOUT_TTL_SECONDS, RESERVATION_TTL_SECONDS, shortProductId } from '@/lib/reservations'
-import { resolveCartLines, type CatalogueProduct, type CheckoutLine } from '@/lib/checkout-lines'
+import { MAX_UNITS_PER_LINE, resolveCartLines, type CatalogueProduct, type CheckoutLine } from '@/lib/checkout-lines'
+import { clientIp, hitLimit, limitKey, MAX_HELD_CHECKOUTS } from '@/lib/rate-limit'
 import { createServiceClient } from '@/utils/supabase/service'
 
 export const runtime = 'nodejs'
@@ -30,7 +31,11 @@ const checkoutRequestSchema = z.object({
         // rejected every seeded product id ('00000000-…-000000000001').
         id: z.guid(),
         variantId: z.guid().nullish(),
-        quantity: z.number().int().min(1).max(99),
+        quantity: z
+          .number()
+          .int()
+          .min(1)
+          .max(MAX_UNITS_PER_LINE, `At most ${MAX_UNITS_PER_LINE} of one item per order`),
       }),
     )
     .min(1, 'Cart is empty')
@@ -42,6 +47,17 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: 'Checkout is not configured on this deployment (STRIPE_SECRET_KEY missing).' },
       { status: 503 },
+    )
+  }
+
+  // Counted before anything else, invalid requests included: flooding with
+  // garbage should cost the sender, not the database.
+  const ip = clientIp(req.headers)
+  const limited = await hitLimit(createServiceClient(), 'checkout', ip)
+  if (!limited.allowed) {
+    return NextResponse.json(
+      { error: 'Too many checkout attempts. Please wait a few minutes and try again.' },
+      { status: 429, headers: { 'Retry-After': String(limited.retryAfterSeconds) } },
     )
   }
 
@@ -109,7 +125,10 @@ export async function POST(req: Request) {
 
     // Hold the units before sending the shopper to pay. The check above is a
     // fast, friendly answer; this is the one that cannot oversell.
-    const reservation = await reserveStock(lines)
+    // Signed-in shoppers are counted per account, so people sharing an IP
+    // (an office, a mobile carrier's NAT) do not use up each other's cap.
+    const owner = limitKey('reservation', user ? `user:${user.id}` : `ip:${ip}`)
+    const reservation = await reserveStock(lines, owner)
     if ('response' in reservation) return reservation.response
 
     let session: Stripe.Checkout.Session
@@ -167,7 +186,7 @@ type ReservationResult = { id: string | null } | { response: NextResponse }
  * database yet (schema.sql not run): checkout then works as it did before, and
  * the webhook takes the stock when payment lands.
  */
-async function reserveStock(lines: readonly CheckoutLine[]): Promise<ReservationResult> {
+async function reserveStock(lines: readonly CheckoutLine[], ownerKey: string | null): Promise<ReservationResult> {
   const service = createServiceClient()
   if (!service) {
     console.error('Checkout: SUPABASE_SERVICE_ROLE_KEY is not set; cannot reserve stock')
@@ -181,8 +200,21 @@ async function reserveStock(lines: readonly CheckoutLine[]): Promise<Reservation
       ...(line.variantId ? { variant_id: line.variantId } : {}),
     })),
     p_ttl_seconds: RESERVATION_TTL_SECONDS,
+    ...(ownerKey ? { p_owner_key: ownerKey, p_max_held: MAX_HELD_CHECKOUTS } : {}),
   })
   if (!error) return { id: data as string }
+
+  if (error.message === 'too_many_reservations') {
+    return {
+      response: NextResponse.json(
+        {
+          error:
+            'You already have several checkouts open. Finish one of them, or try again in about half an hour when they expire.',
+        },
+        { status: 429 },
+      ),
+    }
+  }
 
   const titleOf = (productId: string) => {
     const line = lines.find((l) => l.productId === productId)
