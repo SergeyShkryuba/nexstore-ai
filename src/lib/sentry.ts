@@ -22,6 +22,9 @@ const SECRET_PATTERNS: RegExp[] = [
   /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
   // Stripe Checkout session ids (in success URLs).
   /\bcs_(?:test|live)_[A-Za-z0-9]+/g,
+  // Email addresses: Postgres quotes row values in constraint errors
+  // ("Key (email)=(…) already exists"), and those get logged.
+  /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g,
 ]
 
 /** Replaces anything that looks like a key, token or session id. */

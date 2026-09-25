@@ -14,6 +14,12 @@ describe('redactSecrets', () => {
     expect(redactSecrets('/checkout/success/cs_test_a1B2c3')).toBe('/checkout/success/[redacted]')
   })
 
+  it('removes email addresses that database errors quote', () => {
+    expect(redactSecrets('Key (customer_email)=(jane.doe+shop@example.co.uk) already exists')).toBe(
+      'Key (customer_email)=([redacted]) already exists',
+    )
+  })
+
   it('leaves ordinary text alone', () => {
     expect(redactSecrets('Could not verify your cart')).toBe('Could not verify your cart')
   })
