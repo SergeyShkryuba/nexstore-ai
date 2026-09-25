@@ -21,7 +21,12 @@ vi.mock('@/utils/supabase/server', () => ({
 }))
 
 const rpc = vi.fn()
-vi.mock('@/utils/supabase/service', () => ({ createServiceClient: () => ({ rpc }) }))
+// stock_reservations.update(...).eq('id', …): links the reservation to its session.
+const linkEq = vi.fn()
+const linkUpdate = vi.fn(() => ({ eq: linkEq }))
+vi.mock('@/utils/supabase/service', () => ({
+  createServiceClient: () => ({ rpc, from: () => ({ update: linkUpdate }) }),
+}))
 
 process.env.STRIPE_SECRET_KEY = 'sk_test_x'
 const { POST } = await import('./route')
@@ -45,7 +50,8 @@ beforeEach(() => {
   rpc.mockImplementation(async (fn: string) =>
     fn === 'reserve_stock' ? { data: RESERVATION, error: null } : { data: true, error: null },
   )
-  createSession.mockResolvedValue({ url: 'https://checkout.stripe.test/pay' })
+  createSession.mockResolvedValue({ id: 'cs_test_1', url: 'https://checkout.stripe.test/pay' })
+  linkEq.mockResolvedValue({ error: null })
 })
 
 describe('POST /api/checkout', () => {
@@ -65,6 +71,22 @@ describe('POST /api/checkout', () => {
     expect(params.expires_at - Date.now() / 1000).toBeGreaterThanOrEqual(30 * 60)
     // The price comes from the database, never from the request.
     expect(params.line_items[0].price_data.unit_amount).toBe(29999)
+  })
+
+  it("links the session to the reservation, so Stripe's back link can release it", async () => {
+    await checkout()
+
+    expect(createSession.mock.calls[0][0].cancel_url).toBe(`http://shop.test/cart?cancelled=${RESERVATION}`)
+    expect(linkUpdate).toHaveBeenCalledWith({ stripe_session_id: 'cs_test_1' })
+    expect(linkEq).toHaveBeenCalledWith('id', RESERVATION)
+  })
+
+  it('still sends the shopper to pay when the link cannot be saved', async () => {
+    linkEq.mockResolvedValue({ error: { code: 'PGRST204', message: 'column not found' } })
+    const res = await checkout()
+
+    expect(res.status).toBe(200)
+    expect(rpc).not.toHaveBeenCalledWith('release_reservation', expect.anything())
   })
 
   it('refuses when someone else took the last units, without reaching Stripe', async () => {

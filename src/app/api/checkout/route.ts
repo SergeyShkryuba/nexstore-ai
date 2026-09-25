@@ -137,7 +137,9 @@ export async function POST(req: Request) {
       mode: 'payment',
       line_items,
       success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/cart`,
+      // Stripe's "back" link. The cart uses the id to close this session and
+      // put the units back on sale at once (POST /api/checkout/cancel).
+      cancel_url: reservation.id ? `${origin}/cart?cancelled=${reservation.id}` : `${origin}/cart`,
       customer_email: user?.email,
       client_reference_id: user?.id,
       // The session and the reservation end together; the webhook releases the
@@ -167,6 +169,8 @@ export async function POST(req: Request) {
       await releaseReservation(reservation.id)
       throw error
     }
+
+    await linkSession(reservation.id, session.id)
 
     return NextResponse.json({ url: session.url })
   } catch (error) {
@@ -250,6 +254,21 @@ async function reserveStock(lines: readonly CheckoutLine[], ownerKey: string | n
 
   console.error('Checkout: stock reservation failed', error)
   return { response: NextResponse.json({ error: 'Checkout failed. Please try again.' }, { status: 503 }) }
+}
+
+/**
+ * Records which Stripe session holds the reservation, so cancelling from the
+ * cart can close it. Not fatal: without the link, cancel does nothing and the
+ * units come back when the session expires, as before.
+ */
+async function linkSession(reservationId: string | null, sessionId: string) {
+  if (!reservationId) return
+  const { error } =
+    (await createServiceClient()
+      ?.from('stock_reservations')
+      .update({ stripe_session_id: sessionId })
+      .eq('id', reservationId)) ?? {}
+  if (error) console.error('Checkout: could not link the reservation to its session', reservationId, error)
 }
 
 async function releaseReservation(reservationId: string | null) {

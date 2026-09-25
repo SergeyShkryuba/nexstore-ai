@@ -56,13 +56,16 @@ type EmbedOptions = {
  * Embeds texts with the `embed` Edge Function. Throws on any failure — callers
  * decide whether that is fatal (the backfill) or a reason to fall back to
  * lexical ranking (search).
+ *
+ * Server-only: the function accepts only the service-role key, so the public
+ * anon key cannot be used to call it around the search rate limit.
  */
 export async function embedTexts(
   texts: readonly string[],
   options: EmbedOptions = {},
 ): Promise<number[][]> {
   const supabaseUrl = options.supabaseUrl ?? process.env.NEXT_PUBLIC_SUPABASE_URL
-  const apiKey = options.apiKey ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const apiKey = options.apiKey ?? process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!supabaseUrl || !apiKey) throw new Error('Supabase URL or key is not configured')
 
   const res = await fetch(`${supabaseUrl.replace(/\/+$/, '')}/functions/v1/embed`, {

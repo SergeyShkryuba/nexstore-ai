@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { parseReviewInput } from '@/lib/review-input'
 
 export async function addReview(formData: FormData) {
   const supabase = await createClient()
@@ -9,19 +10,17 @@ export async function addReview(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'You must be logged in to leave a review.' }
 
-  const productId = formData.get('product_id') as string
-  const rating = parseInt(formData.get('rating') as string)
-  const comment = formData.get('comment') as string
+  const parsed = parseReviewInput(formData)
+  if (!parsed.ok) return { error: parsed.error }
+  const { productId, rating, comment } = parsed.review
 
-  if (!productId || !rating || rating < 1 || rating > 5) {
-    return { error: 'Invalid rating or product.' }
-  }
-
+  // `verified_purchase` is not sent: a database trigger sets it from the
+  // author's paid orders, whatever the request says.
   const { error } = await supabase.from('reviews').insert({
     product_id: productId,
     user_id: user.id,
     rating,
-    comment
+    comment,
   })
 
   if (error) {

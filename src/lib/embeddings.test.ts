@@ -40,10 +40,27 @@ describe('toPgVector', () => {
 })
 
 describe('embedTexts', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
+  })
 
   const vector = Array.from({ length: EMBEDDING_DIMENSIONS }, () => 0.01)
   const config = { supabaseUrl: 'https://ref.supabase.co/', apiKey: 'anon-key' }
+
+  it('defaults to the service-role key — the function refuses the public anon key', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://ref.supabase.co')
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'public-anon-key')
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'service-key')
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ embeddings: [vector] }), { status: 200 }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await embedTexts(['warm sweater'])
+
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer service-key')
+  })
 
   it('calls the embed Edge Function with the key and returns the vectors', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
