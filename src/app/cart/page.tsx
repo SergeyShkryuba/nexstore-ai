@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Trash2, Plus, Minus, Loader2 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { formatPrice } from '@/lib/format'
 import { MAX_UNITS_PER_LINE } from '@/lib/checkout-lines'
@@ -16,6 +16,26 @@ import { MAX_UNITS_PER_LINE } from '@/lib/checkout-lines'
 export default function CartPage() {
   const hydrated = useCartHydrated()
   const [isLoading, setIsLoading] = useState(false)
+
+  // Back from Stripe's page via its "back" link: close that checkout so its
+  // units go back on sale now rather than when the session expires. Read from
+  // window.location, not useSearchParams, which would need a Suspense
+  // boundary to keep this page static. Repeats are harmless (idempotent).
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    const reservationId = url.searchParams.get('cancelled')
+    if (!reservationId) return
+    url.searchParams.delete('cancelled')
+    window.history.replaceState(window.history.state, '', url.pathname + url.search)
+    toast.info('Checkout cancelled. Your cart is still here.')
+    fetch('/api/checkout/cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reservationId }),
+    }).catch(() => {
+      // Not the shopper's problem: the units come back when the session expires.
+    })
+  }, [])
 
   const items = useCartStore((state) => state.items)
   const removeItem = useCartStore((state) => state.removeItem)

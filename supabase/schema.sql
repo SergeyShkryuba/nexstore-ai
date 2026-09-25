@@ -557,6 +557,11 @@ alter table stock_reservations add column if not exists owner_key text;
 create index if not exists idx_stock_reservations_owner_held
   on stock_reservations (owner_key) where status = 'held';
 
+-- The Stripe Checkout Session holding these units, so a shopper who presses
+-- "back" on Stripe's page can close that session and free the units at once
+-- instead of in ~36 minutes (POST /api/checkout/cancel).
+alter table stock_reservations add column if not exists stripe_session_id text;
+
 alter table stock_reservations enable row level security;
 
 -- Written only through the functions below (service role). Admins may read,

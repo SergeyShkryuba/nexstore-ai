@@ -11,6 +11,8 @@ export const LIMITS = {
   checkout: { limit: 10, windowSeconds: 10 * 60 },
   /** Each search embeds the query through the Edge Function. */
   search: { limit: 30, windowSeconds: 60 },
+  /** Each cancel can call Stripe; a shopper needs one per abandoned checkout. */
+  cancel: { limit: 20, windowSeconds: 10 * 60 },
 } as const
 
 export type LimitScope = keyof typeof LIMITS
