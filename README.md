@@ -96,7 +96,9 @@ recurse through the `profiles` policies.
   Function running the built-in gte-small model (`supabase/functions/embed`),
   and `match_products()` returns the nearest products by cosine similarity from
   an HNSW index. Product vectors live in their own `product_embeddings` table,
-  so catalogue queries never ship them to the browser.
+  so catalogue queries never ship them to the browser. The function accepts
+  only the service-role key, so it cannot be called with the public anon key
+  around the search route's rate limit.
 - *Fusion* (`src/lib/hybrid.ts`): reciprocal rank fusion, since the two scores
   are on unrelated scales. Semantic matches must clear 0.80 similarity *and* be
   within 0.05 of the best match — thresholds calibrated on the demo catalogue,
@@ -212,6 +214,15 @@ events — the last three are what put reserved stock back on sale:
   headers, emails and query strings never reach an error report.
 - `src/app/api/checkout/route.test.ts` — also: a flood is stopped before any
   read, reservation or Stripe call, and a fourth open checkout is refused.
+- `src/app/api/checkout/cancel/route.test.ts` — Stripe's back link releases
+  units only after Stripe has closed the session, never for a paid one.
+- `supabase/tests/schema.test.ts` — **the SQL itself, on a real Postgres**:
+  PGlite (Postgres in WebAssembly, in-process, no Docker) loads the whole
+  `schema.sql` twice and `seed.sql`, with Supabase's roles, default grants and
+  RLS stubbed in `supabase/tests/db.ts`. Covers reservations all-or-nothing,
+  sizes, idempotent release and paid orders, the open-checkout cap, rate
+  limits, and what the public anon key can reach: no server-only function, no
+  self-made paid order, nobody else's orders, no forged "verified purchase".
 
 ## Known limitations
 
@@ -222,18 +233,21 @@ Listed rather than hidden:
 - The similarity thresholds were calibrated on a 10-product catalogue; a much
   larger or different catalogue should be re-checked.
 - Units in an open checkout are unavailable to others for up to ~36 minutes
-  (Stripe's minimum session life plus a margin) if the shopper walks away.
-  The per-shopper cap bounds this, but someone with many IP addresses could
-  still hold stock; and a shopper who abandons three checkouts in a row waits
-  for them to expire before a fourth.
+  (Stripe's minimum session life plus a margin) if the shopper walks away —
+  leaving through Stripe's "back" link releases them at once, the browser's
+  back button does not. The per-shopper cap bounds this, but someone with many
+  IP addresses could still hold stock.
+- "Verified purchase" is decided when a review is written or edited: a review
+  written before buying stays unmarked until it is edited.
 - Rate limits are per IP for visitors who are not signed in, so people behind
   one address (an office, a carrier's NAT) share them.
 - The Content Security Policy allows inline scripts (see Architecture notes);
   it limits where an injected script could send data, not whether it runs.
 - The store sends no email of its own. Stripe emails receipts for live-mode
   payments only.
-- The reservation SQL is exercised against a real database by hand; the unit
-  tests cover the TypeScript around it, not the functions themselves.
+- The SQL tests run on PGlite with Supabase's auth and storage stubbed, and
+  one connection, so they cannot show two checkouts racing; the locking that
+  handles that is reviewed, not tested.
 - No end-to-end browser tests; the Stripe flow is tested with mocked Stripe
   and Supabase clients plus manual test-mode purchases.
 
