@@ -19,7 +19,6 @@ const BATCH_SIZE = 16
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 if (!url || !serviceKey) {
   console.error('NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set (see .env.example).')
@@ -58,7 +57,8 @@ for (let i = 0; i < stale.length; i += BATCH_SIZE) {
   const batch = stale.slice(i, i + BATCH_SIZE)
   const embeddings = await embedTexts(
     batch.map((p) => p.text),
-    { supabaseUrl: url, apiKey: anonKey ?? serviceKey, timeoutMs: 60_000 },
+    // The embed function accepts only the service-role key.
+    { supabaseUrl: url, apiKey: serviceKey, timeoutMs: 60_000 },
   )
 
   const { error } = await db.from('product_embeddings').upsert(
