@@ -2,17 +2,20 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Star } from 'lucide-react'
+import { BadgeCheck, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { addReview } from '@/app/actions/reviews'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { MAX_REVIEW_LENGTH } from '@/lib/review-limits'
 
 interface Review {
   id: string
   rating: number
   comment: string | null
   created_at: string
+  /** Set by the database from the author's paid orders. Absent before schema.sql adds it. */
+  verified_purchase?: boolean
   profiles: {
     full_name: string | null
     avatar_url: string | null
@@ -74,6 +77,12 @@ export function ReviewSection({ productId, initialReviews }: { productId: string
                       {new Date(review.created_at).toLocaleDateString()}
                     </span>
                   </div>
+                  {review.verified_purchase && (
+                    <p className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      <BadgeCheck className="size-3.5" aria-hidden="true" />
+                      Verified purchase
+                    </p>
+                  )}
                   <div className="flex text-yellow-400 my-2">
                     {Array.from({ length: 5 }).map((_, i) => (
                       <Star key={i} className={`w-4 h-4 ${i < review.rating ? 'fill-current' : 'text-muted'}`} />
@@ -114,12 +123,17 @@ export function ReviewSection({ productId, initialReviews }: { productId: string
             
             <div>
               <p className="text-sm font-medium mb-2">Comment (Optional)</p>
-              <textarea 
+              <textarea
                 name="comment"
+                maxLength={MAX_REVIEW_LENGTH}
                 className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 placeholder="What did you like or dislike?"
               />
             </div>
+
+            <p className="text-xs text-muted-foreground">
+              Reviews from shoppers who bought the product are marked &ldquo;Verified purchase&rdquo;.
+            </p>
 
             <Button type="submit" disabled={isSubmitting} className="w-full">
               {isSubmitting ? 'Submitting...' : 'Submit Review'}

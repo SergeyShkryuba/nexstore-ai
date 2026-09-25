@@ -285,6 +285,68 @@ drop policy if exists "Users can delete their own reviews" on reviews;
 create policy "Users can delete their own reviews"
   on reviews for delete using (auth.uid() = user_id);
 
+-- "Verified purchase": the author has a paid order containing the product.
+-- Any signed-in visitor may still review (it is a demo shop), but a review
+-- backed by an order is marked. Set only by the trigger below: an insert that
+-- claims `verified_purchase = true` is overwritten, and the column is not in
+-- the update grant above.
+alter table reviews add column if not exists verified_purchase boolean not null default false;
+
+-- Comments are capped. NOT VALID: checked for new and edited rows only, so a
+-- longer comment from before the cap cannot make this file fail to re-run.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'reviews_comment_length') then
+    alter table reviews
+      add constraint reviews_comment_length check (char_length(comment) <= 2000) not valid;
+  end if;
+end $$;
+
+create or replace function public.has_bought(p_user_id uuid, p_product_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from orders o
+    join order_items oi on oi.order_id = o.id
+    where o.user_id = p_user_id
+      and oi.product_id = p_product_id
+      and o.status in ('paid', 'shipped', 'delivered')
+  );
+$$;
+
+-- Nobody calls it directly: it would tell anyone who bought what.
+revoke all on function public.has_bought(uuid, uuid) from public, anon, authenticated;
+
+create or replace function public.set_review_verified()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  new.verified_purchase := public.has_bought(new.user_id, new.product_id);
+  return new;
+end;
+$$;
+
+revoke all on function public.set_review_verified() from public, anon, authenticated;
+
+drop trigger if exists reviews_verified_purchase on reviews;
+create trigger reviews_verified_purchase
+  before insert or update of rating, comment, user_id, product_id on reviews
+  for each row execute function public.set_review_verified();
+
+-- Reviews written before the flag existed. Touches only rows that change, and
+-- does not fire the trigger (verified_purchase is not in its column list).
+update reviews r
+set verified_purchase = public.has_bought(r.user_id, r.product_id)
+where r.verified_purchase is distinct from public.has_bought(r.user_id, r.product_id);
+
 -- ======================== Semantic search ==================================
 -- Product embeddings (gte-small, 384 dimensions) produced by the `embed` Edge
 -- Function. Kept out of `products` so `select('*')` on the catalogue does not
