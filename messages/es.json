@@ -28,6 +28,7 @@
     "shop": "Tienda",
     "account": "Cuenta",
     "help": "Ayuda",
+    "contact": "Contacto",
     "allProducts": "Todos los productos",
     "underBudget": "Menos de {amount} €",
     "myAccount": "Mi cuenta",
@@ -503,5 +504,13 @@
       "invalid": "No se pudo enviar el mensaje.",
       "tooLong": "El mensaje es demasiado largo. Acórtalo, por favor."
     }
+  },
+  "Contact": {
+    "title": "Contacto",
+    "metaDescription": "¿Dudas sobre un pedido, una devolución o un producto? Escribe al equipo de NexStore.",
+    "intro": "¿Dudas sobre un pedido, una devolución o un producto? Escríbenos y te responderemos por email.",
+    "orderHint": "¿Es sobre un pedido? Indica su número: lo encontrarás en <link>tu cuenta</link>.",
+    "returnsHint": "Los plazos de entrega, las devoluciones y la garantía se explican en <link>Envíos y devoluciones</link>.",
+    "replyNote": "Normalmente respondemos en un día laborable."
   }
 }

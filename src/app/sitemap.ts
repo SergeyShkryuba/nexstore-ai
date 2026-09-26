@@ -25,7 +25,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticEntries: MetadataRoute.Sitemap = [
     ...everyLanguage('/', { changeFrequency: 'daily', priority: 1 }),
     ...everyLanguage('/categories/all', { changeFrequency: 'daily', priority: 0.8 }),
-    ...['/about', '/help/shipping-returns', '/privacy', '/terms'].flatMap((path) =>
+    ...['/about', '/contact', '/help/shipping-returns', '/privacy', '/terms'].flatMap((path) =>
       everyLanguage(path, { changeFrequency: 'yearly', priority: 0.3 }),
     ),
   ]

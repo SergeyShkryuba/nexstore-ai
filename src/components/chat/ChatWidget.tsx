@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import { CHAT_LIMITS } from '@/lib/chat/request'
 import { MessageText } from './MessageText'
 import { OrderCards, ProductCards } from './ChatCards'
-import { HandoffForm } from './HandoffForm'
+import { SupportForm } from '@/components/support/SupportForm'
 import { toHistory, useChat, type UiMessage } from './useChat'
 
 /**
@@ -229,7 +229,7 @@ function MessageView({
         <ProductCards products={message.products} onNavigate={onNavigate} />
       )}
       {message.orders && <OrderCards {...message.orders} onNavigate={onNavigate} />}
-      {message.handoff && <HandoffForm summary={message.handoff.summary} transcript={transcript} />}
+      {message.handoff && <SupportForm compact summary={message.handoff.summary} transcript={transcript} />}
       {message.error && (
         <p className="flex items-start gap-2 text-xs text-destructive" role="alert">
           <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
