@@ -1,4 +1,4 @@
-# NexStore AI
+# NexStore
 
 A full-stack e-commerce storefront built with Next.js 16 (App Router), React 19,
 TypeScript, Tailwind CSS v4 and Supabase, with Stripe Checkout for payments.
@@ -17,11 +17,9 @@ TypeScript, Tailwind CSS v4 and Supabase, with Stripe Checkout for payments.
 
 ## What it does
 
-- **Hybrid search** — semantic (pgvector nearest neighbours over gte-small
-  embeddings) fused with a lexical ranker, with budget parsing
-  (`"smart home under 60"`). `"film my surfing trip"` finds the action camera
-  without sharing a word with it; `"kitchen knife"` returns nothing, because
-  the shop sells none.
+- **Search** — field-weighted keyword ranking with suggestions as you type and
+  budgets in three languages (`"smart home under 60"`, `"до 60"`) applied as a
+  price filter; `"kitchen knife"` returns nothing, because the shop sells none.
 - **Catalogue browsing** — sort, price range and in-stock filters kept in the
   URL; product pages with an image gallery.
 - **Cart** — client-side, persisted to `localStorage`, hydration-safe.
@@ -41,8 +39,8 @@ TypeScript, Tailwind CSS v4 and Supabase, with Stripe Checkout for payments.
   catalogue (titles, descriptions, specifications, categories), Stripe's
   payment page, prices and dates, with a language switcher in the header.
 - **Shop assistant** — a chat widget on Claude (Haiku 4.5) with tools: it
-  searches the catalogue (in English, so the semantic half works for Russian
-  and Spanish questions too), looks up products and the shopper's own orders,
+  searches the catalogue (in English against the base titles, whatever the
+  shopper's language), looks up products and the shopper's own orders,
   answers from the shipping and returns policy, and hands over to a person
   through a form that lands in the admin panel. Replies stream in; products and
   orders show as cards with links. Hidden unless `ANTHROPIC_API_KEY` is set.
@@ -106,25 +104,18 @@ through its parent order, wishlists are strictly private, and admin access is
 resolved by a `SECURITY DEFINER` `is_admin()` function so the policy does not
 recurse through the `profiles` policies.
 
-**Search** runs two rankers in parallel and fuses them.
+**Search** (`src/lib/search.ts`, `src/lib/search-service.ts`) is keyword
+ranking: field-weighted term matching with stemming, saturating counts, a
+coverage multiplier, an exact-phrase bonus and a lift for products in a
+category the query names. A budget phrase is parsed out and applied as a price
+filter rather than matched as words. The ranker is a pure module, unit-tested
+without a database; the search box and the shop assistant share it.
 
-- *Lexical* (`src/lib/search.ts`): field-weighted term matching with saturating
-  counts, a coverage multiplier and an exact-phrase bonus.
-- *Semantic*: the query (minus its budget phrase) is embedded by a Supabase Edge
-  Function running the built-in gte-small model (`supabase/functions/embed`),
-  and `match_products()` returns the nearest products by cosine similarity from
-  an HNSW index. Product vectors live in their own `product_embeddings` table,
-  so catalogue queries never ship them to the browser. The function accepts
-  only the service-role key, so it cannot be called with the public anon key
-  around the search route's rate limit.
-- *Fusion* (`src/lib/hybrid.ts`): reciprocal rank fusion, since the two scores
-  are on unrelated scales. Semantic matches must clear 0.80 similarity *and* be
-  within 0.05 of the best match — thresholds calibrated on the demo catalogue,
-  where on-topic matches score 0.80–0.92 and the best match for things the shop
-  does not sell stays under 0.80.
-
-If the Edge Function is slow or down, search falls back to lexical ranking and
-the UI says so. All three modules are pure and unit-tested without a database.
+An earlier version also ranked by meaning (gte-small embeddings in pgvector,
+fused with the keyword ranker). It was removed: for a catalogue like this one,
+names, types and budgets are what shoppers type, and the embeddings added an
+Edge Function, a vector index and a re-embedding step on every product edit.
+`schema.sql` drops what it left behind.
 
 **Languages** ([next-intl](https://next-intl.dev)). English keeps the
 unprefixed URLs it always had (`/product/x`); Spanish and Russian live under
@@ -143,7 +134,7 @@ catalogue is still prerendered with ISR — once per language.
   translations and `src/lib/localized.ts` picks the visitor's, falling back to
   English field by field, so a new product appears in every language at once.
 - *Search* ranks against the visitor's language and reads budgets in all three
-  ("under 60", "menos de 60", "до 60"). Its semantic half stays English.
+  ("under 60", "menos de 60", "до 60").
 - *Access rules* in `src/proxy.ts` compare the path without its language
   prefix (and normalised), so `/es/admin` is as closed as `/admin`.
 - *Stripe* opens in the visitor's language, with translated line names, and
@@ -171,17 +162,6 @@ Create a Supabase project, then run the two SQL files in the SQL editor:
 supabase/schema.sql   # tables, triggers, functions, RLS policies (idempotent)
 supabase/seed.sql     # demo catalogue (upsert, safe to re-run)
 ```
-
-For semantic search, deploy the Edge Function (dashboard → Edge Functions →
-new function `embed`, paste `supabase/functions/embed/index.ts`; or
-`npx supabase functions deploy embed`), then embed the catalogue:
-
-```bash
-npm run embed:catalogue   # needs SUPABASE_SERVICE_ROLE_KEY; skips unchanged products
-```
-
-Products created in the admin panel are embedded on creation. Without the
-function, search still works — lexically.
 
 To make yourself an admin:
 
@@ -240,7 +220,7 @@ Each messenger is used when its variables are set and skipped otherwise.
   and `WHATSAPP_OWNER_NUMBER` (digits, with the country code). A business can
   only start a conversation with an approved template: create `store_alert`
   (Utility, English) with the body
-  `NexStore AI: {{1}}. {{2}} Details in the admin panel.`
+  `NexStore: {{1}}. {{2}} Details in the admin panel.`
 
 ## Scripts
 
@@ -252,7 +232,6 @@ Each messenger is used when its variables are set and skipped otherwise.
 | `npm run lint` | ESLint |
 | `npm test` | Vitest |
 | `npm run verify` | All of the above, in the order CI runs them |
-| `npm run embed:catalogue` | Embed new or changed products for semantic search |
 
 ## Tests
 
@@ -260,10 +239,6 @@ Each messenger is used when its variables are set and skipped otherwise.
 
 - `src/lib/search.test.ts` — stemming, stop words, budget parsing, ranking
   order, and the guarantee that an unmatched query returns nothing.
-- `src/lib/hybrid.test.ts` — rank fusion, the similarity cut-offs, and the
-  budget applied to semantic matches.
-- `src/lib/embeddings.test.ts` — the embedded text, content hashing, and the
-  Edge Function client's error handling.
 - `src/lib/catalog.test.ts` — category filters: URL round-trip, malformed
   input, sorting and price ranges.
 - `src/store/useCartStore.test.ts` — quantity merging, removal at zero,
@@ -316,12 +291,9 @@ Listed rather than hidden:
 - The shop assistant sees the last 12 messages of a chat and forgets product
   details between turns beyond the names of the cards it showed; the chat
   lives in the tab (`sessionStorage`).
-- Semantic search is English-only: gte-small is an English model. Russian
-  (Cyrillic) queries skip it and are ranked by keywords against the Russian
-  titles, and the results say "keyword ranking only"; Spanish queries try it,
-  and mostly land on keywords too.
-- The similarity thresholds were calibrated on a 10-product catalogue; a much
-  larger or different catalogue should be re-checked.
+- Search matches words, not meaning: "something to keep me warm" finds only
+  products whose text says "warm". Russian has no morphology beyond simple
+  prefix matching ("умный дом" does not find "Умная лампа").
 - Units in an open checkout are unavailable to others for up to ~36 minutes
   (Stripe's minimum session life plus a margin) if the shopper walks away —
   leaving through Stripe's "back" link releases them at once, the browser's

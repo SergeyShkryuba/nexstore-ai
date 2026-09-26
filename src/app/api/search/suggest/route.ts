@@ -17,9 +17,9 @@ export type Suggestion = {
 /**
  * Type-ahead suggestions: `GET /api/search/suggest?q=head`.
  *
- * Lexical only, and deliberately so — it runs on every pause in typing, and the
- * ranker already prefix-matches ("head" finds "headphones"). The full hybrid
- * search runs when the shopper submits.
+ * Runs on every pause in typing, so it is cached and kept lean; the ranker
+ * already prefix-matches ("head" finds "headphones"). The full search, with
+ * budgets and stock, runs when the shopper submits.
  */
 export async function GET(req: Request) {
   const params = new URL(req.url).searchParams

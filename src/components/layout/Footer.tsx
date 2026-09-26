@@ -50,7 +50,7 @@ export async function Footer({ categories }: { categories: NavCategory[] }) {
         <div className="grid grid-cols-2 gap-8 md:grid-cols-5">
           <div className="col-span-2">
             <Link href="/" className="text-lg font-bold">
-              NexStore AI
+              NexStore
             </Link>
             <p className="mt-3 max-w-xs text-sm text-muted-foreground">{t('tagline')}</p>
             <p className="mt-4 max-w-xs text-xs text-muted-foreground">{t('demoNotice')}</p>

@@ -1,8 +1,8 @@
 {
   "Metadata": {
-    "title": "NexStore AI - Comercio electrónico de nueva generación",
+    "title": "NexStore — Electrónica, hogar inteligente y ropa",
     "description": "Una tienda completa con Next.js: búsqueda en el catálogo, carrito, pago con Stripe y panel de administración.",
-    "tagline": "Descubre el futuro de las compras con nuestra tienda impulsada por IA."
+    "tagline": "Electrónica, hogar inteligente y ropa, con envío gratis en toda la UE."
   },
   "Layout": {
     "skipToContent": "Saltar al contenido"
@@ -22,7 +22,7 @@
     "toggleTheme": "Cambiar tema"
   },
   "Footer": {
-    "tagline": "Una tienda en la que puedes buscar con tus propias palabras: por significado, no solo por palabras clave.",
+    "tagline": "Electrónica, hogar inteligente y ropa, con envío gratis en toda la UE.",
     "demoNotice": "Demo de portfolio: no se envía nada y los pagos funcionan en el modo de prueba de Stripe.",
     "source": "Código en GitHub",
     "shop": "Tienda",
@@ -38,7 +38,7 @@
     "privacy": "Privacidad",
     "terms": "Condiciones",
     "about": "Sobre este proyecto",
-    "copyright": "© {year} NexStore AI. Hecho con Next.js, Supabase y Stripe.",
+    "copyright": "© {year} NexStore. Hecho con Next.js, Supabase y Stripe.",
     "secureCheckout": "Pago seguro con Stripe · Precios en EUR"
   },
   "Breadcrumbs": {
@@ -116,8 +116,8 @@
     "showMore": "Mostrar más (quedan {left})"
   },
   "Search": {
-    "title": "Busca en el catálogo <em>con tus propias palabras</em>",
-    "intro": "Describe lo que necesitas —aunque no sepas el nombre del producto, y con un presupuesto como «menos de 60»— y la búsqueda lo encuentra por significado además de por palabras clave.",
+    "title": "Encuentra justo <em>lo que buscas</em>",
+    "intro": "Busca por nombre o tipo de producto y añade un presupuesto como «menos de 60» para ver solo lo que encaja.",
     "label": "Buscar productos",
     "placeholder": "p. ej., auriculares con cancelación de ruido hasta 300",
     "searching": "Buscando",
@@ -127,19 +127,12 @@
     "examples": [
       "auriculares inalámbricos",
       "hogar inteligente menos de 60",
-      "jersey para el invierno",
-      "cámara sumergible"
+      "jersey de lana",
+      "cámara deportiva"
     ],
     "results": "{count, plural, one {# resultado} other {# resultados}}",
     "noMatches": "Sin resultados",
-    "strategy": {
-      "hybrid": "búsqueda semántica + por palabras clave",
-      "lexical": "solo por palabras clave"
-    },
     "budget": "presupuesto ≤ {amount}",
-    "matchedTerms": "coincide: {terms}",
-    "matchedByMeaning": "coincide por significado",
-    "similarity": "similitud {value}",
     "nothingMatches": "Nada del catálogo coincide. Prueba con menos palabras o sube el presupuesto.",
     "failed": "La búsqueda ha fallado",
     "tryLater": "Inténtalo de nuevo más tarde.",
@@ -343,26 +336,28 @@
     "back": "Volver a la tienda"
   },
   "Pages": {
-    "demoNotice": "NexStore AI es un proyecto de portfolio. No vende ni envía nada, y el pago funciona en el modo de prueba de Stripe, así que nunca se cobra dinero real.",
+    "demoNotice": "NexStore es un proyecto de portfolio. No vende ni envía nada, y el pago funciona en el modo de prueba de Stripe, así que nunca se cobra dinero real.",
     "about": {
       "title": "Sobre este proyecto",
-      "metaDescription": "Cómo está hecho NexStore AI: búsqueda semántica híbrida, Supabase, Stripe y Next.js.",
-      "intro": "NexStore AI es una tienda online completa, creada como proyecto de portfolio. Es una aplicación real que funciona —no una maqueta—, pero no es un negocio.",
+      "metaDescription": "Cómo está hecho NexStore: Next.js, Supabase, Stripe y un asistente de compra con Claude.",
+      "intro": "NexStore es una tienda online completa, creada como proyecto de portfolio. Es una aplicación real que funciona —no una maqueta—, pero no es un negocio.",
       "sections": [
         {
           "heading": "Qué merece la pena ver",
           "items": [
-            "<b>Búsqueda por significado.</b> Las consultas se convierten en vectores con el modelo gte-small y se comparan con el catálogo mediante pgvector; después se combinan con un ranking por palabras clave. «Film my surfing trip» encuentra la cámara deportiva sin compartir ni una palabra con ella.",
+            "<b>Una búsqueda que entiende de presupuestos.</b> Búsqueda por palabras clave con sugerencias mientras escribes y presupuestos en tres idiomas («under 60», «menos de 60», «до 60») aplicados como filtro de precio.",
             "<b>Un pago que no se puede manipular.</b> El navegador solo envía los identificadores de producto y las cantidades; los precios se vuelven a leer de la base de datos antes de llegar a Stripe.",
             "<b>Seguridad a nivel de fila en todas partes.</b> Cada tabla está protegida en el propio Postgres, no solo en la interfaz.",
             "<b>Tres idiomas.</b> La interfaz y el catálogo están en inglés, español y ruso, cada uno con su propia URL.",
-            "<b>Un panel de administración</b> para productos, fotos, stock y estado de los pedidos."
+            "<b>Un panel de administración</b> para productos, fotos, stock y estado de los pedidos.",
+            "<b>Un asistente de compra con Claude.</b> Un chat opcional que encuentra productos, consulta los pedidos del propio cliente y pasa la conversación a una persona.",
+            "<b>Avisos para el propietario.</b> Los pedidos nuevos y las solicitudes de soporte llegan al propietario por Telegram, y pueden llegar por WhatsApp."
           ]
         },
         {
           "heading": "Tecnologías",
           "paragraphs": [
-            "Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · next-intl · Supabase (Postgres, Auth, Storage, Edge Functions, pgvector) · Stripe · Zod · Vitest, desplegado en Vercel."
+            "Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · next-intl · Supabase (Postgres, Auth, Storage) · Stripe · Claude API · Zod · Vitest, desplegado en Vercel."
           ]
         },
         {
@@ -373,7 +368,7 @@
     },
     "privacy": {
       "title": "Privacidad",
-      "metaDescription": "Qué guarda NexStore AI sobre ti, dónde y por qué.",
+      "metaDescription": "Qué guarda NexStore sobre ti, dónde y por qué.",
       "intro": "Breve, porque la tienda recoge muy pocos datos.",
       "sections": [
         { "heading": "Tienda de demostración", "demo": true },
@@ -406,7 +401,7 @@
     },
     "terms": {
       "title": "Condiciones de uso",
-      "metaDescription": "Las condiciones de uso de la tienda de demostración NexStore AI.",
+      "metaDescription": "Las condiciones de uso de la tienda de demostración NexStore.",
       "sections": [
         {
           "heading": "Una demo, no una tienda",

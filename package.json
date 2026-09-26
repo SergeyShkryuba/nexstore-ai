@@ -11,8 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "verify": "npm run typecheck && npm run lint && npm run test && npm run build",
-    "embed:catalogue": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file=.env.local scripts/embed-catalogue.mjs"
+    "verify": "npm run typecheck && npm run lint && npm run test && npm run build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
@@ -41,7 +40,6 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
-    "@electric-sql/pglite-pgvector": "^0.0.9",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",

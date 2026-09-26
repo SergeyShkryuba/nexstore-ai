@@ -52,12 +52,10 @@ describe('search_products', () => {
   it('searches in English, shows results in the shopper’s language, and applies the budget', async () => {
     searchCatalogue.mockResolvedValue({
       maxPrice: null,
-      strategy: 'hybrid',
       results: [product('pro-headphones', 250), product('earbuds', 60), product('sport-earbuds', 80)].map((p) => ({
         product: p,
         score: 1,
         matchedTerms: [],
-        similarity: 0.9,
       })),
     })
     const ctx = context()

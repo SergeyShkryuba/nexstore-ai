@@ -2,7 +2,6 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { contentHash, embedTexts, productEmbeddingText, toPgVector } from '@/lib/embeddings'
 import {
   CATEGORY_TRANSLATION_LIMITS,
   PRODUCT_TRANSLATION_LIMITS,
@@ -65,36 +64,6 @@ function revalidateCatalogue(slug?: string) {
 }
 
 /**
- * Keeps the product findable by meaning after a create or an edit. Not fatal:
- * the product is saved either way, and `npm run embed:catalogue` fills in
- * anything missed. Same text and hash as the backfill script, so it will not
- * redo this work.
- */
-async function syncEmbedding(supabase: Supabase, productId: string) {
-  try {
-    const { data: product, error } = await supabase
-      .from('products')
-      .select('title, description, attributes, categories(name)')
-      .eq('id', productId)
-      .single()
-    if (error) throw error
-
-    const category = (product.categories as { name?: string } | null)?.name ?? null
-    const text = productEmbeddingText({ ...product, category })
-    const [embedding] = await embedTexts([text])
-    const { error: upsertError } = await supabase.from('product_embeddings').upsert({
-      product_id: productId,
-      embedding: toPgVector(embedding),
-      content_hash: await contentHash(text),
-      updated_at: new Date().toISOString(),
-    })
-    if (upsertError) throw upsertError
-  } catch (error) {
-    console.error('Product saved, but embedding it failed:', error)
-  }
-}
-
-/**
  * Reads the product form: fields plus the sizes editor (JSON). Both are
  * validated before anything is written.
  */
@@ -142,7 +111,6 @@ export async function createProduct(formData: FormData): Promise<ActionResult> {
     return { error: saveProductError(error, 'Failed to create product') }
   }
 
-  await syncEmbedding(supabase, id as string)
   revalidateCatalogue(slug)
   return { success: true, id: id as string }
 }
@@ -169,7 +137,6 @@ export async function updateProduct(productId: string, formData: FormData): Prom
   }
 
   const { data: saved } = await supabase.from('products').select('slug').eq('id', productId).maybeSingle()
-  await syncEmbedding(supabase, productId)
   revalidateCatalogue(saved?.slug)
   return { success: true, id: productId }
 }
@@ -263,14 +230,6 @@ function revalidateCategories() {
   revalidatePath('/[locale]', 'layout')
 }
 
-/** A category's name is part of its products' search text; re-embed them. */
-async function reembedCategoryProducts(supabase: Supabase, categoryId: string | null, productIds?: string[]) {
-  const ids =
-    productIds ??
-    ((await supabase.from('products').select('id').eq('category_id', categoryId)).data ?? []).map((p) => p.id)
-  for (const id of ids) await syncEmbedding(supabase, id)
-}
-
 export async function createCategory(formData: FormData): Promise<ActionResult> {
   const auth = await requireAdmin()
   if ('error' in auth) return auth
@@ -311,8 +270,8 @@ export async function updateCategory(categoryId: string, formData: FormData): Pr
   const translations = parseTranslationsForm(formData, CATEGORY_TRANSLATION_LIMITS)
   if (!translations.success) return { error: translations.error.issues[0]?.message ?? 'Invalid translation' }
 
-  const { data: before } = await supabase.from('categories').select('name').eq('id', categoryId).maybeSingle()
-  if (!before) return { error: 'Category not found' }
+  const { data: existing } = await supabase.from('categories').select('id').eq('id', categoryId).maybeSingle()
+  if (!existing) return { error: 'Category not found' }
 
   const { name, description, image_url } = parsed.data
   const { error } = await supabase.rpc('save_category', {
@@ -326,7 +285,6 @@ export async function updateCategory(categoryId: string, formData: FormData): Pr
     return { error: error.message === 'category_not_found' ? 'Category not found' : 'Failed to update category' }
   }
 
-  if (before.name !== name) await reembedCategoryProducts(supabase, categoryId)
   revalidateCategories()
   return { success: true, id: categoryId }
 }
@@ -336,9 +294,6 @@ export async function deleteCategory(categoryId: string): Promise<ActionResult> 
   const auth = await requireAdmin()
   if ('error' in auth) return auth
   const { supabase } = auth
-
-  // Read before deleting: afterwards the link from these products is gone.
-  const { data: orphans } = await supabase.from('products').select('id').eq('category_id', categoryId)
 
   const { data: deleted, error } = await supabase
     .from('categories')
@@ -353,7 +308,6 @@ export async function deleteCategory(categoryId: string): Promise<ActionResult> 
   }
   if (!deleted) return { error: 'Category not found' }
 
-  await reembedCategoryProducts(supabase, null, (orphans ?? []).map((p) => p.id))
   revalidateCategories()
   return { success: true }
 }

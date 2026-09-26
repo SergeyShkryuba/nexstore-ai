@@ -1,8 +1,8 @@
 {
   "Metadata": {
-    "title": "NexStore AI - Next Generation E-commerce",
+    "title": "NexStore — Electronics, Smart Home & Clothing",
     "description": "A full-stack Next.js storefront: catalogue search, cart, Stripe checkout and an admin panel.",
-    "tagline": "Experience the future of shopping with our AI-powered e-commerce platform."
+    "tagline": "Electronics, smart home and clothing, with free delivery across the EU."
   },
   "Layout": {
     "skipToContent": "Skip to content"
@@ -22,7 +22,7 @@
     "toggleTheme": "Toggle theme"
   },
   "Footer": {
-    "tagline": "A storefront you can search in your own words — by meaning, not only by keywords.",
+    "tagline": "Electronics, smart home and clothing, with free delivery across the EU.",
     "demoNotice": "Portfolio demo: nothing is shipped and payments run in Stripe test mode.",
     "source": "Source on GitHub",
     "shop": "Shop",
@@ -38,7 +38,7 @@
     "privacy": "Privacy",
     "terms": "Terms",
     "about": "About this project",
-    "copyright": "© {year} NexStore AI. Built with Next.js, Supabase and Stripe.",
+    "copyright": "© {year} NexStore. Built with Next.js, Supabase and Stripe.",
     "secureCheckout": "Secure checkout by Stripe · Prices in EUR"
   },
   "Breadcrumbs": {
@@ -116,8 +116,8 @@
     "showMore": "Show more ({left} left)"
   },
   "Search": {
-    "title": "Search the catalogue <em>in your own words</em>",
-    "intro": "Describe what you need — even without the product’s name, and with a budget like “under 60” — and search matches it by meaning as well as by keywords.",
+    "title": "Find exactly <em>what you need</em>",
+    "intro": "Search by product name or type, and add a budget like “under 60” to see only what fits.",
     "label": "Search products",
     "placeholder": "e.g., noise cancelling headphones under 300",
     "searching": "Searching",
@@ -127,19 +127,12 @@
     "examples": [
       "wireless headphones",
       "smart home under 60",
-      "something to keep me warm in winter",
-      "film my surfing trip"
+      "warm sweater",
+      "action camera"
     ],
     "results": "{count, plural, one {# result} other {# results}}",
     "noMatches": "No matches",
-    "strategy": {
-      "hybrid": "semantic + keyword ranking",
-      "lexical": "keyword ranking only"
-    },
     "budget": "budget ≤ {amount}",
-    "matchedTerms": "matched: {terms}",
-    "matchedByMeaning": "matched by meaning",
-    "similarity": "similarity {value}",
     "nothingMatches": "Nothing in the catalogue matches that. Try fewer words, or raise the budget.",
     "failed": "Search failed",
     "tryLater": "Please try again later.",
@@ -343,26 +336,28 @@
     "back": "Back to the store"
   },
   "Pages": {
-    "demoNotice": "NexStore AI is a portfolio project. It does not sell or ship anything, and checkout runs in Stripe test mode, so no real payment is ever taken.",
+    "demoNotice": "NexStore is a portfolio project. It does not sell or ship anything, and checkout runs in Stripe test mode, so no real payment is ever taken.",
     "about": {
       "title": "About this project",
-      "metaDescription": "How NexStore AI is built: hybrid semantic search, Supabase, Stripe and Next.js.",
-      "intro": "NexStore AI is a full-stack e-commerce storefront, built as a portfolio project. It is a real, working application — not a clickable mockup — but it is not running a business.",
+      "metaDescription": "How NexStore is built: Next.js, Supabase, Stripe, and a Claude shop assistant.",
+      "intro": "NexStore is a full-stack e-commerce storefront, built as a portfolio project. It is a real, working application — not a clickable mockup — but it is not running a business.",
       "sections": [
         {
           "heading": "What is worth a look",
           "items": [
-            "<b>Search by meaning.</b> Queries are embedded with the gte-small model and matched against the catalogue with pgvector, then fused with a keyword ranker. “Film my surfing trip” finds the action camera without sharing a word with it.",
+            "<b>Search that understands budgets.</b> Keyword search with suggestions as you type, and budgets in three languages (“under 60”, “menos de 60”, “до 60”) applied as a price filter.",
             "<b>A checkout you cannot tamper with.</b> The browser sends only product ids and quantities; prices are re-read from the database before Stripe sees them.",
             "<b>Row-level security everywhere.</b> Every table is protected in Postgres itself, not only in the UI.",
             "<b>Three languages.</b> The interface and the catalogue are in English, Spanish and Russian, each at its own URL.",
-            "<b>An admin panel</b> for products, photos, stock and order status."
+            "<b>An admin panel</b> for products, photos, stock and order status.",
+            "<b>A shop assistant on Claude.</b> An optional chat that finds products, checks the shopper’s own orders and hands over to a person.",
+            "<b>Owner alerts.</b> New orders and support requests reach the owner on Telegram, and can on WhatsApp."
           ]
         },
         {
           "heading": "Stack",
           "paragraphs": [
-            "Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · next-intl · Supabase (Postgres, Auth, Storage, Edge Functions, pgvector) · Stripe · Zod · Vitest, deployed on Vercel."
+            "Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · next-intl · Supabase (Postgres, Auth, Storage) · Stripe · Claude API · Zod · Vitest, deployed on Vercel."
           ]
         },
         {
@@ -373,7 +368,7 @@
     },
     "privacy": {
       "title": "Privacy",
-      "metaDescription": "What NexStore AI stores about you, where, and why.",
+      "metaDescription": "What NexStore stores about you, where, and why.",
       "intro": "Short, because the store collects very little.",
       "sections": [
         { "heading": "Demo store", "demo": true },
@@ -406,7 +401,7 @@
     },
     "terms": {
       "title": "Terms of use",
-      "metaDescription": "The terms for using the NexStore AI demo store.",
+      "metaDescription": "The terms for using the NexStore demo store.",
       "sections": [
         {
           "heading": "A demo, not a shop",
