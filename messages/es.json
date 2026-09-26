@@ -1,0 +1,462 @@
+{
+  "Metadata": {
+    "title": "NexStore AI - Comercio electrónico de nueva generación",
+    "description": "Una tienda completa con Next.js: búsqueda en el catálogo, carrito, pago con Stripe y panel de administración.",
+    "tagline": "Descubre el futuro de las compras con nuestra tienda impulsada por IA."
+  },
+  "Layout": {
+    "skipToContent": "Saltar al contenido"
+  },
+  "Header": {
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú",
+    "admin": "Admin",
+    "adminPanel": "Panel de administración",
+    "wishlist": "Favoritos",
+    "profile": "Perfil",
+    "signOut": "Cerrar sesión",
+    "signIn": "Iniciar sesión",
+    "language": "Idioma",
+    "cart": "Carrito",
+    "cartWithItems": "Carrito, {count, plural, one {# artículo} other {# artículos}}",
+    "toggleTheme": "Cambiar tema"
+  },
+  "Footer": {
+    "tagline": "Una tienda en la que puedes buscar con tus propias palabras: por significado, no solo por palabras clave.",
+    "demoNotice": "Demo de portfolio: no se envía nada y los pagos funcionan en el modo de prueba de Stripe.",
+    "source": "Código en GitHub",
+    "shop": "Tienda",
+    "account": "Cuenta",
+    "help": "Ayuda",
+    "allProducts": "Todos los productos",
+    "underBudget": "Menos de {amount} €",
+    "myAccount": "Mi cuenta",
+    "wishlist": "Favoritos",
+    "cart": "Carrito",
+    "shippingReturns": "Envíos y devoluciones",
+    "privacy": "Privacidad",
+    "terms": "Condiciones",
+    "about": "Sobre este proyecto",
+    "copyright": "© {year} NexStore AI. Hecho con Next.js, Supabase y Stripe.",
+    "secureCheckout": "Pago seguro con Stripe · Precios en EUR"
+  },
+  "Breadcrumbs": {
+    "label": "Ruta de navegación"
+  },
+  "Stock": {
+    "out": "Agotado",
+    "low": "Solo quedan {count}",
+    "in": "En stock"
+  },
+  "ProductCard": {
+    "added": "Añadido al carrito",
+    "noImage": "Sin imagen",
+    "soldOut": "Agotado",
+    "sizesInStock": "Tallas disponibles:",
+    "chooseSize": "Elegir talla",
+    "addToCart": "Añadir al carrito"
+  },
+  "ProductPurchase": {
+    "added": "Añadido al carrito",
+    "addedWithSize": "{title} · talla {size}",
+    "size": "Talla",
+    "sizeSoldOut": "agotada",
+    "lowInSize": "{stock} en la talla {size}",
+    "outOfStock": "Agotado",
+    "chooseSize": "Elige una talla",
+    "addToCart": "Añadir al carrito"
+  },
+  "Home": {
+    "shopByCategory": "Comprar por categoría",
+    "shopNow": "Ver productos",
+    "newArrivals": "Novedades",
+    "viewAll": "Ver todo",
+    "underBudget": "Menos de {amount} €",
+    "allUnderBudget": "Todo por menos de {amount} €"
+  },
+  "Product": {
+    "notFound": "Producto no encontrado",
+    "home": "Inicio",
+    "allProducts": "Todos los productos",
+    "ratedOutOf5": "Valorado con {rating} de 5",
+    "reviewCount": "{count, plural, one {# opinión} other {# opiniones}}",
+    "noReviews": "Aún no hay opiniones",
+    "warranty": "Garantía de 1 año",
+    "freeShipping": "Envío gratis",
+    "returns": "Devoluciones en 30 días",
+    "specifications": "Características",
+    "noSpecifications": "No hay características.",
+    "related": "Productos relacionados"
+  },
+  "Category": {
+    "home": "Inicio",
+    "allProducts": "Todos los productos",
+    "notFound": "Categoría no encontrada",
+    "empty": "No hay productos en esta categoría."
+  },
+  "Catalog": {
+    "sortBy": "Ordenar por",
+    "sort": {
+      "newest": "Más recientes",
+      "price-asc": "Precio: de menor a mayor",
+      "price-desc": "Precio: de mayor a menor",
+      "name": "Nombre: A–Z"
+    },
+    "inStockOnly": "Solo en stock",
+    "clearFilters": "Quitar filtros",
+    "size": "Talla",
+    "minPrice": "Precio mín., €",
+    "maxPrice": "Precio máx., €",
+    "any": "Cualquiera",
+    "apply": "Aplicar",
+    "count": "{count, plural, one {# producto} other {# productos}}",
+    "countMatching": "{shown} de {total} productos coinciden",
+    "noMatches": "Ningún producto coincide con estos filtros.",
+    "showMore": "Mostrar más (quedan {left})"
+  },
+  "Search": {
+    "title": "Busca en el catálogo <em>con tus propias palabras</em>",
+    "intro": "Describe lo que necesitas —aunque no sepas el nombre del producto, y con un presupuesto como «menos de 60»— y la búsqueda lo encuentra por significado además de por palabras clave.",
+    "label": "Buscar productos",
+    "placeholder": "p. ej., auriculares con cancelación de ruido hasta 300",
+    "searching": "Buscando",
+    "submit": "Buscar",
+    "suggestions": "Productos sugeridos",
+    "try": "Prueba:",
+    "examples": [
+      "auriculares inalámbricos",
+      "hogar inteligente menos de 60",
+      "jersey para el invierno",
+      "cámara sumergible"
+    ],
+    "results": "{count, plural, one {# resultado} other {# resultados}}",
+    "noMatches": "Sin resultados",
+    "strategy": {
+      "hybrid": "búsqueda semántica + por palabras clave",
+      "lexical": "solo por palabras clave"
+    },
+    "budget": "presupuesto ≤ {amount}",
+    "matchedTerms": "coincide: {terms}",
+    "matchedByMeaning": "coincide por significado",
+    "similarity": "similitud {value}",
+    "nothingMatches": "Nada del catálogo coincide. Prueba con menos palabras o sube el presupuesto.",
+    "failed": "La búsqueda ha fallado",
+    "tryLater": "Inténtalo de nuevo más tarde.",
+    "api": {
+      "tooMany": "Demasiadas búsquedas. Espera un momento e inténtalo de nuevo.",
+      "tooShort": "Escribe al menos 2 caracteres.",
+      "tooLong": "La búsqueda es demasiado larga.",
+      "invalid": "No se ha podido leer la búsqueda.",
+      "unavailable": "La búsqueda no está disponible temporalmente.",
+      "failed": "La búsqueda ha fallado. Inténtalo de nuevo."
+    }
+  },
+  "Wishlist": {
+    "signInFirst": "Inicia sesión para añadir productos a favoritos.",
+    "added": "Añadido a favoritos",
+    "removed": "Eliminado de favoritos",
+    "failed": "No se han podido actualizar tus favoritos.",
+    "add": "Añadir a favoritos",
+    "remove": "Quitar de favoritos"
+  },
+  "Gallery": {
+    "noImage": "Sin imagen",
+    "alt": "{title}, imagen {index} de {count}",
+    "previous": "Imagen anterior",
+    "next": "Imagen siguiente",
+    "openFull": "Ver a tamaño completo: {alt}",
+    "show": "Mostrar la imagen {index} de {count}"
+  },
+  "Auth": {
+    "title": "Iniciar sesión",
+    "description": "Inicia sesión o crea una cuenta nueva para empezar a comprar.",
+    "resetTitle": "Restablecer la contraseña",
+    "resetDescription": "Te enviaremos un enlace para crear una contraseña nueva.",
+    "signInTab": "Entrar",
+    "signUpTab": "Registrarse",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "forgotPassword": "¿Has olvidado la contraseña?",
+    "signIn": "Entrar",
+    "signedIn": "Has iniciado sesión",
+    "fullName": "Nombre completo",
+    "namePlaceholder": "Ana García",
+    "minLength": "Al menos {count} caracteres.",
+    "createAccount": "Crear cuenta",
+    "accountCreated": "Cuenta creada",
+    "confirmEmail": "Revisa tu bandeja de entrada para confirmar tu correo.",
+    "sendResetLink": "Enviar enlace",
+    "backToSignIn": "Volver a iniciar sesión",
+    "resetSent": "Si existe una cuenta para <strong>{email}</strong>, te llegará un enlace para restablecerla. Funciona una sola vez, durante una hora y en este navegador.",
+    "newPassword": "Nueva contraseña",
+    "repeatPassword": "Repítela",
+    "mismatch": "Las contraseñas no coinciden.",
+    "saveNewPassword": "Guardar la nueva contraseña",
+    "passwordUpdated": "Contraseña actualizada",
+    "passwordUpdatedDescription": "Has iniciado sesión con la nueva contraseña."
+  },
+  "Cart": {
+    "title": "Tu carrito",
+    "empty": "Tu carrito está vacío",
+    "continueShopping": "Seguir comprando",
+    "size": "Talla {size}",
+    "lineWithSize": "{title}, talla {size}",
+    "decrease": "Reducir la cantidad de {item}",
+    "increase": "Aumentar la cantidad de {item}",
+    "remove": "Quitar {item} del carrito",
+    "maxPerOrder": "Como máximo {count} por pedido",
+    "summary": "Resumen del pedido",
+    "total": "Total",
+    "checkout": "Ir al pago",
+    "reverified": "Los precios se vuelven a comprobar en el servidor antes del pago.",
+    "cancelled": "Pago cancelado. Tu carrito sigue aquí.",
+    "checkoutFailed": "No se ha podido iniciar el pago",
+    "noPaymentUrl": "No se ha recibido el enlace de pago.",
+    "checkoutError": "Se ha producido un error durante el pago"
+  },
+  "Checkout": {
+    "notConfigured": "El pago no está configurado en este despliegue.",
+    "tooManyAttempts": "Demasiados intentos de pago. Espera unos minutos e inténtalo de nuevo.",
+    "invalidCart": "No se ha podido leer tu carrito. Actualiza la página.",
+    "emptyCart": "Tu carrito está vacío.",
+    "maxPerLine": "Como máximo {max} unidades de un mismo artículo por pedido.",
+    "verifyFailed": "No se ha podido comprobar tu carrito.",
+    "lines": {
+      "unavailable": "Algunos artículos ya no están disponibles. Actualiza tu carrito.",
+      "sizeRequired": "Elige una talla para {title}: quítalo del carrito y vuelve a añadirlo.",
+      "sizeGone": "Esa talla de {title} ya no está a la venta. Elige otra.",
+      "short": "No hay stock suficiente de: {items}"
+    },
+    "lineName": "{title} — talla {size}",
+    "freeShipping": "Envío estándar gratuito",
+    "unavailable": "El pago no está disponible temporalmente.",
+    "tooManyOpen": "Ya tienes varios pagos abiertos. Termina uno de ellos o vuelve a intentarlo dentro de media hora, cuando caduquen.",
+    "anItem": "un artículo de tu carrito",
+    "takenMeanwhile": "No hay stock suficiente de: {item}. Puede que otra persona lo esté comprando ahora mismo.",
+    "sizesChanged": "Las tallas de un artículo de tu carrito han cambiado. Actualiza el carrito y elige una talla.",
+    "failed": "El pago ha fallado. Inténtalo de nuevo."
+  },
+  "CheckoutSuccess": {
+    "title": "¡Pago completado!",
+    "thanks": "Gracias por tu compra. Tu pedido se ha realizado.",
+    "session": "ID de sesión: {id}",
+    "orders": "Ver mis pedidos",
+    "continue": "Seguir comprando",
+    "loading": "Cargando…"
+  },
+  "WishlistPage": {
+    "title": "Tus favoritos",
+    "empty": "No tienes favoritos",
+    "emptyHint": "Guarda aquí lo que te guste para encontrarlo fácilmente después.",
+    "startShopping": "Empezar a comprar"
+  },
+  "Profile": {
+    "title": "Mi cuenta",
+    "details": "Datos del perfil",
+    "fullName": "Nombre completo",
+    "notProvided": "No indicado",
+    "email": "Correo electrónico",
+    "role": "Rol",
+    "roleAdmin": "Administrador",
+    "roleUser": "Cliente",
+    "orders": "Historial de pedidos",
+    "noOrders": "Todavía no has hecho ningún pedido.",
+    "orderNumber": "Pedido n.º {id}"
+  },
+  "OrderStatus": {
+    "pending": "Pendiente",
+    "paid": "Pagado",
+    "shipped": "Enviado",
+    "delivered": "Entregado",
+    "cancelled": "Cancelado",
+    "refunded": "Reembolsado"
+  },
+  "Order": {
+    "metaTitle": "Detalles del pedido",
+    "allOrders": "Todos los pedidos",
+    "title": "Pedido n.º {id}",
+    "placed": "Realizado el {date}",
+    "refunded": "Este pedido se ha reembolsado.",
+    "cancelled": "Este pedido se ha cancelado.",
+    "progress": "Estado del pedido",
+    "stepDone": "(completado)",
+    "stepPending": "(pendiente)",
+    "items": "Artículos",
+    "removedProduct": "Ya no está en el catálogo",
+    "size": "Talla {size}",
+    "subtotal": "Subtotal",
+    "shipping": "Envío",
+    "free": "Gratis",
+    "totalPaid": "Total pagado",
+    "delivery": "Entrega",
+    "noAddress": "Este pedido no tiene dirección de entrega.",
+    "contactEmail": "Correo de contacto: {email}"
+  },
+  "Reviews": {
+    "title": "Opiniones de clientes",
+    "none": "Aún no hay opiniones. ¡Sé el primero en opinar sobre este producto!",
+    "anonymous": "Anónimo",
+    "verified": "Compra verificada",
+    "write": "Escribe una opinión",
+    "rating": "Valoración",
+    "stars": "{count, plural, one {# estrella} other {# estrellas}}",
+    "comment": "Comentario (opcional)",
+    "placeholder": "¿Qué te ha gustado y qué no?",
+    "verifiedHint": "Las opiniones de quienes han comprado el producto llevan la marca «Compra verificada».",
+    "submit": "Publicar opinión",
+    "submitting": "Publicando…",
+    "submitted": "Opinión publicada",
+    "signInFirst": "Inicia sesión para escribir una opinión.",
+    "invalid": {
+      "product": "No se ha encontrado el producto.",
+      "rating": "Elige una valoración del 1 al 5.",
+      "tooLong": "La opinión no puede superar los {max} caracteres."
+    },
+    "duplicate": "Ya has escrito una opinión sobre este producto.",
+    "failed": "No se ha podido publicar tu opinión."
+  },
+  "Error": {
+    "title": "Algo ha salido mal",
+    "description": "No se ha podido mostrar la página. Normalmente es algo temporal.",
+    "reference": "Referencia: {digest}",
+    "retry": "Reintentar"
+  },
+  "NotFound": {
+    "title": "No hemos encontrado esa página",
+    "description": "Puede que el producto o la categoría que buscabas se haya eliminado o haya cambiado de nombre.",
+    "home": "Ir al inicio",
+    "browse": "Ver todos los productos"
+  },
+  "AuthError": {
+    "metaTitle": "Enlace caducado",
+    "title": "Este enlace ya no funciona",
+    "expired": "Los enlaces por correo caducan al cabo de una hora y solo funcionan una vez. Los de los correos predeterminados también deben abrirse en el mismo navegador desde el que los pediste.",
+    "recovery": "Pide uno nuevo: abre Iniciar sesión y elige «¿Has olvidado la contraseña?».",
+    "confirm": "Si estabas confirmando tu correo, puede que ya esté confirmado: prueba a iniciar sesión.",
+    "back": "Volver a la tienda"
+  },
+  "UpdatePassword": {
+    "title": "Crea una contraseña nueva",
+    "for": "Para {email}",
+    "noSession": "Abre esta página desde el enlace del correo para restablecer la contraseña. Para recibirlo, abre Iniciar sesión y elige «¿Has olvidado la contraseña?».",
+    "back": "Volver a la tienda"
+  },
+  "Pages": {
+    "demoNotice": "NexStore AI es un proyecto de portfolio. No vende ni envía nada, y el pago funciona en el modo de prueba de Stripe, así que nunca se cobra dinero real.",
+    "about": {
+      "title": "Sobre este proyecto",
+      "metaDescription": "Cómo está hecho NexStore AI: búsqueda semántica híbrida, Supabase, Stripe y Next.js.",
+      "intro": "NexStore AI es una tienda online completa, creada como proyecto de portfolio. Es una aplicación real que funciona —no una maqueta—, pero no es un negocio.",
+      "sections": [
+        {
+          "heading": "Qué merece la pena ver",
+          "items": [
+            "<b>Búsqueda por significado.</b> Las consultas se convierten en vectores con el modelo gte-small y se comparan con el catálogo mediante pgvector; después se combinan con un ranking por palabras clave. «Film my surfing trip» encuentra la cámara deportiva sin compartir ni una palabra con ella.",
+            "<b>Un pago que no se puede manipular.</b> El navegador solo envía los identificadores de producto y las cantidades; los precios se vuelven a leer de la base de datos antes de llegar a Stripe.",
+            "<b>Seguridad a nivel de fila en todas partes.</b> Cada tabla está protegida en el propio Postgres, no solo en la interfaz.",
+            "<b>Tres idiomas.</b> La interfaz y el catálogo están en inglés, español y ruso, cada uno con su propia URL.",
+            "<b>Un panel de administración</b> para productos, fotos, stock y estado de los pedidos."
+          ]
+        },
+        {
+          "heading": "Tecnologías",
+          "paragraphs": [
+            "Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · next-intl · Supabase (Postgres, Auth, Storage, Edge Functions, pgvector) · Stripe · Zod · Vitest, desplegado en Vercel."
+          ]
+        },
+        {
+          "heading": "Código fuente",
+          "paragraphs": ["El código, las notas de arquitectura y las limitaciones conocidas están en <link>GitHub</link>."]
+        }
+      ]
+    },
+    "privacy": {
+      "title": "Privacidad",
+      "metaDescription": "Qué guarda NexStore AI sobre ti, dónde y por qué.",
+      "intro": "Breve, porque la tienda recoge muy pocos datos.",
+      "sections": [
+        { "heading": "Tienda de demostración", "demo": true },
+        {
+          "heading": "Qué se guarda",
+          "items": [
+            "<b>Tu cuenta</b>: el correo electrónico y, si lo indicas, tu nombre. Los guarda Supabase Auth.",
+            "<b>Tu actividad</b>: pedidos, favoritos y opiniones, vinculados a tu cuenta en la base de datos Supabase de la tienda. La seguridad a nivel de fila hace que solo tú (y el administrador, en el caso de los pedidos) podáis verlos.",
+            "<b>Tu carrito</b>: se guarda en el almacenamiento local de tu propio navegador, no en un servidor.",
+            "<b>Las búsquedas</b>: se procesan para encontrar productos y no se guardan.",
+            "<b>Contadores de solicitudes</b>: para frenar avalanchas de pagos y búsquedas, la tienda cuenta las solicitudes de cada visitante durante unos minutos. Guarda un hash con clave, irreversible, de tu dirección IP (o del identificador de tu cuenta), nunca la dirección en sí, y borra los contadores en menos de un día.",
+            "<b>Informes de errores</b>: si el despliegue tiene activada la monitorización de errores (Sentry), un informe de fallo registra la página, el tipo de navegador y el error técnico. Antes de enviarlo se eliminan las cookies, las direcciones IP y de correo, el contenido de los formularios y los parámetros de la URL."
+          ]
+        },
+        {
+          "heading": "Pagos",
+          "paragraphs": ["El pago se hace en la propia página de Stripe. Los datos de la tarjeta van directamente a Stripe y nunca pasan por los servidores de la tienda."]
+        },
+        {
+          "heading": "Cookies y seguimiento",
+          "paragraphs": [
+            "Las únicas cookies son las que mantienen tu sesión iniciada y una que recuerda el idioma que has elegido. No hay analítica, ni publicidad, ni seguimiento de terceros; los informes de errores mencionados arriba son lo único que puede llegar a un tercero. Las fuentes se sirven desde la propia tienda, así que cargar una página no contacta con Google."
+          ]
+        },
+        {
+          "heading": "Eliminar tus datos",
+          "paragraphs": ["Para que se elimine tu cuenta y todo lo vinculado a ella, abre una incidencia en el <link>GitHub del proyecto</link>."]
+        }
+      ]
+    },
+    "terms": {
+      "title": "Condiciones de uso",
+      "metaDescription": "Las condiciones de uso de la tienda de demostración NexStore AI.",
+      "sections": [
+        {
+          "heading": "Una demo, no una tienda",
+          "demo": true,
+          "paragraphs": ["Hacer un pedido aquí solo crea un pedido de prueba. No se celebra ningún contrato de compraventa y no se entregará nada."]
+        },
+        {
+          "heading": "Productos y precios",
+          "paragraphs": ["Los nombres, descripciones, niveles de stock y precios de los productos son datos de ejemplo. Las fotos proceden de Unsplash y se usan con la licencia de Unsplash."]
+        },
+        {
+          "heading": "Cuentas y opiniones",
+          "items": [
+            "No compartas tus datos de acceso; eres responsable de la actividad de tu cuenta.",
+            "Las opiniones deben ser tuyas y no pueden ser ofensivas ni ilegales. Pueden eliminarse.",
+            "Los datos de prueba, incluidas las cuentas, pueden restablecerse en cualquier momento."
+          ]
+        },
+        {
+          "heading": "Sin garantía",
+          "paragraphs": ["El sitio se ofrece tal cual, sin ninguna garantía de disponibilidad, exactitud o ausencia de errores."]
+        }
+      ]
+    },
+    "shipping": {
+      "title": "Envíos y devoluciones",
+      "metaDescription": "Plazos de entrega, envío gratis, devoluciones en 30 días y garantía de 1 año.",
+      "intro": "La política que aplicaría una NexStore real: la que prometen las páginas de producto.",
+      "sections": [
+        { "heading": "Tienda de demostración", "demo": true },
+        {
+          "heading": "Envíos",
+          "items": [
+            "Envío estándar gratuito en todos los pedidos dentro de la UE.",
+            "Los pedidos se envían en 1–2 días laborables y suelen llegar 2–5 días laborables después.",
+            "Puedes seguir el estado de cada pedido —pagado, enviado, entregado— en la página de tu cuenta."
+          ]
+        },
+        {
+          "heading": "Devoluciones",
+          "items": [
+            "Devuelve cualquier artículo en los 30 días siguientes a la entrega, por el motivo que sea.",
+            "Los artículos deben estar sin usar y en su embalaje original.",
+            "El reembolso se hace al método de pago original cuando llega la devolución."
+          ]
+        },
+        {
+          "heading": "Garantía",
+          "paragraphs": ["Todos los productos tienen una garantía de 1 año frente a defectos de fabricación. Esto no afecta a tus derechos como consumidor en la UE."]
+        }
+      ]
+    }
+  }
+}

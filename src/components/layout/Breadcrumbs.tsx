@@ -1,19 +1,26 @@
-import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
+import { getLocale, getTranslations } from 'next-intl/server'
+import { Link } from '@/i18n/navigation'
+import { isLocale, localizedPath } from '@/i18n/routing'
 import { breadcrumbJsonLd, serializeJsonLd, type Crumb } from '@/lib/structured-data'
 import { siteUrl } from '@/lib/site'
 
 /**
  * The visible trail and its BreadcrumbList markup, from one list, so what
  * search engines read can never drift from what visitors see. The last crumb
- * is the current page.
+ * is the current page. Paths are the unprefixed ones; both the links and the
+ * markup get the page's language prefix.
  */
-export function Breadcrumbs({ crumbs }: { crumbs: Crumb[] }) {
+export async function Breadcrumbs({ crumbs }: { crumbs: Crumb[] }) {
+  const [rawLocale, t] = await Promise.all([getLocale(), getTranslations('Breadcrumbs')])
+  const locale = isLocale(rawLocale) ? rawLocale : 'en'
+  const localized = crumbs.map((c) => ({ ...c, path: localizedPath(c.path, locale) }))
+
   return (
-    <nav aria-label="Breadcrumb" className="mb-6 text-sm">
+    <nav aria-label={t('label')} className="mb-6 text-sm">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbJsonLd(crumbs, siteUrl)) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbJsonLd(localized, siteUrl)) }}
       />
       <ol className="flex flex-wrap items-center gap-1.5 text-muted-foreground">
         {crumbs.map((crumb, i) => {

@@ -3,7 +3,17 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { contentHash, embedTexts, productEmbeddingText, toPgVector } from '@/lib/embeddings'
-import { orderStatusSchema, parseCategoryForm, parseProductForm, slugify, type ProductInput } from '@/lib/admin-schemas'
+import {
+  CATEGORY_TRANSLATION_LIMITS,
+  PRODUCT_TRANSLATION_LIMITS,
+  orderStatusSchema,
+  parseCategoryForm,
+  parseProductForm,
+  parseTranslationsForm,
+  slugify,
+  type ProductInput,
+  type TranslationsInput,
+} from '@/lib/admin-schemas'
 import { parseVariantsField, type VariantInput } from '@/lib/variants'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
@@ -42,11 +52,16 @@ async function freeSlug(supabase: Supabase, table: 'products' | 'categories', ba
   return slug
 }
 
+/**
+ * Every page lives under app/[locale], so the routes are named by pattern:
+ * one call covers the page in all three languages. (A plain '/product/x'
+ * would name a URL that is only ever reached through a rewrite, and miss.)
+ */
 function revalidateCatalogue(slug?: string) {
-  revalidatePath('/admin/products')
-  revalidatePath('/')
-  revalidatePath('/categories/[slug]', 'page')
-  if (slug) revalidatePath(`/product/${slug}`)
+  revalidatePath('/[locale]/admin/products', 'page')
+  revalidatePath('/[locale]', 'page')
+  revalidatePath('/[locale]/categories/[slug]', 'page')
+  if (slug) revalidatePath('/[locale]/product/[slug]', 'page')
 }
 
 /**
@@ -84,7 +99,7 @@ async function syncEmbedding(supabase: Supabase, productId: string) {
  * validated before anything is written.
  */
 type ProductForm =
-  | { fields: ProductInput; variants: VariantInput[] | null }
+  | { fields: ProductInput; variants: VariantInput[] | null; translations: TranslationsInput }
   | { error: string }
 
 function readProductForm(formData: FormData): ProductForm {
@@ -92,7 +107,9 @@ function readProductForm(formData: FormData): ProductForm {
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid product data' }
   const variants = parseVariantsField(formData.get('variants'))
   if (!variants.success) return { error: variants.error }
-  return { fields: parsed.data, variants: variants.data }
+  const translations = parseTranslationsForm(formData, PRODUCT_TRANSLATION_LIMITS)
+  if (!translations.success) return { error: translations.error.issues[0]?.message ?? 'Invalid translation' }
+  return { fields: parsed.data, variants: variants.data, translations: translations.data }
 }
 
 /** Postgres error from save_product() → what the admin should read. */
@@ -112,11 +129,12 @@ export async function createProduct(formData: FormData): Promise<ActionResult> {
 
   const slug = await freeSlug(supabase, 'products', slugify(form.fields.title) || 'product')
 
-  // Product and sizes in one transaction (save_product in schema.sql).
+  // Product, sizes and translations in one transaction (save_product in schema.sql).
   const { data: id, error } = await supabase.rpc('save_product', {
     p_product_id: null,
     p_fields: { ...form.fields, slug },
     p_variants: form.variants,
+    p_translations: form.translations,
   })
 
   if (error) {
@@ -142,6 +160,7 @@ export async function updateProduct(productId: string, formData: FormData): Prom
     p_product_id: productId,
     p_fields: form.fields,
     p_variants: form.variants,
+    p_translations: form.translations,
   })
 
   if (error) {
@@ -203,8 +222,8 @@ export async function updateOrderStatus(orderId: string, status: string): Promis
   // RLS without an admin UPDATE policy filters the row out rather than erroring.
   if (!updated) return { error: 'Order not found, or orders cannot be edited yet (run schema.sql)' }
 
-  revalidatePath('/admin/orders')
-  revalidatePath('/profile')
+  revalidatePath('/[locale]/admin/orders', 'page')
+  revalidatePath('/[locale]/profile', 'page')
   return { success: true }
 }
 
@@ -215,7 +234,7 @@ export async function updateOrderStatus(orderId: string, status: string): Promis
  * category page, so a change revalidates the whole layout.
  */
 function revalidateCategories() {
-  revalidatePath('/', 'layout')
+  revalidatePath('/[locale]', 'layout')
 }
 
 /** A category's name is part of its products' search text; re-embed them. */
@@ -233,15 +252,18 @@ export async function createCategory(formData: FormData): Promise<ActionResult> 
 
   const parsed = parseCategoryForm(formData)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid category' }
+  const translations = parseTranslationsForm(formData, CATEGORY_TRANSLATION_LIMITS)
+  if (!translations.success) return { error: translations.error.issues[0]?.message ?? 'Invalid translation' }
 
   const { name, description, image_url } = parsed.data
   const slug = await freeSlug(supabase, 'categories', slugify(name) || 'category')
 
-  const { data: created, error } = await supabase
-    .from('categories')
-    .insert({ name, slug, description, image_url: image_url || null })
-    .select('id')
-    .single()
+  // Category and translations in one transaction (save_category in schema.sql).
+  const { data: id, error } = await supabase.rpc('save_category', {
+    p_category_id: null,
+    p_fields: { name, slug, description, image_url },
+    p_translations: translations.data,
+  })
 
   if (error) {
     console.error('Error creating category:', error)
@@ -249,7 +271,7 @@ export async function createCategory(formData: FormData): Promise<ActionResult> 
   }
 
   revalidateCategories()
-  return { success: true, id: created.id }
+  return { success: true, id: id as string }
 }
 
 /** The slug is kept on purpose: renaming must not break links to the category. */
@@ -260,19 +282,22 @@ export async function updateCategory(categoryId: string, formData: FormData): Pr
 
   const parsed = parseCategoryForm(formData)
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? 'Invalid category' }
+  const translations = parseTranslationsForm(formData, CATEGORY_TRANSLATION_LIMITS)
+  if (!translations.success) return { error: translations.error.issues[0]?.message ?? 'Invalid translation' }
 
   const { data: before } = await supabase.from('categories').select('name').eq('id', categoryId).maybeSingle()
   if (!before) return { error: 'Category not found' }
 
   const { name, description, image_url } = parsed.data
-  const { error } = await supabase
-    .from('categories')
-    .update({ name, description, image_url: image_url || null })
-    .eq('id', categoryId)
+  const { error } = await supabase.rpc('save_category', {
+    p_category_id: categoryId,
+    p_fields: { name, description, image_url },
+    p_translations: translations.data,
+  })
 
   if (error) {
     console.error('Error updating category:', error)
-    return { error: 'Failed to update category' }
+    return { error: error.message === 'category_not_found' ? 'Category not found' : 'Failed to update category' }
   }
 
   if (before.name !== name) await reembedCategoryProducts(supabase, categoryId)

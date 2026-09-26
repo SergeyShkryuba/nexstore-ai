@@ -1,21 +1,10 @@
-import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 import { Code, Lock } from 'lucide-react'
+import { Link } from '@/i18n/navigation'
 import type { NavCategory } from '@/lib/nav-categories'
 
 const REPO_URL = 'https://github.com/SergeyShkryuba/nexstore-ai'
-
-const ACCOUNT_LINKS = [
-  { href: '/profile', label: 'My account' },
-  { href: '/wishlist', label: 'Wishlist' },
-  { href: '/cart', label: 'Cart' },
-]
-
-const HELP_LINKS = [
-  { href: '/help/shipping-returns', label: 'Shipping & returns' },
-  { href: '/privacy', label: 'Privacy' },
-  { href: '/terms', label: 'Terms' },
-  { href: '/about', label: 'About this project' },
-]
+const BUDGET = 50
 
 function FooterColumn({ title, links }: { title: string; links: { href: string; label: string }[] }) {
   return (
@@ -34,11 +23,24 @@ function FooterColumn({ title, links }: { title: string; links: { href: string; 
   )
 }
 
-export function Footer({ categories }: { categories: NavCategory[] }) {
+export async function Footer({ categories }: { categories: NavCategory[] }) {
+  const t = await getTranslations('Footer')
+
   const shopLinks = [
-    { href: '/categories/all', label: 'All products' },
+    { href: '/categories/all', label: t('allProducts') },
     ...categories.map((c) => ({ href: `/categories/${c.slug}`, label: c.name })),
-    { href: '/categories/all?sort=price-asc&max=50&stock=1', label: 'Under €50' },
+    { href: `/categories/all?sort=price-asc&max=${BUDGET}&stock=1`, label: t('underBudget', { amount: BUDGET }) },
+  ]
+  const accountLinks = [
+    { href: '/profile', label: t('myAccount') },
+    { href: '/wishlist', label: t('wishlist') },
+    { href: '/cart', label: t('cart') },
+  ]
+  const helpLinks = [
+    { href: '/help/shipping-returns', label: t('shippingReturns') },
+    { href: '/privacy', label: t('privacy') },
+    { href: '/terms', label: t('terms') },
+    { href: '/about', label: t('about') },
   ]
 
   return (
@@ -49,12 +51,8 @@ export function Footer({ categories }: { categories: NavCategory[] }) {
             <Link href="/" className="text-lg font-bold">
               NexStore AI
             </Link>
-            <p className="mt-3 max-w-xs text-sm text-muted-foreground">
-              A storefront you can search in your own words — by meaning, not only by keywords.
-            </p>
-            <p className="mt-4 max-w-xs text-xs text-muted-foreground">
-              Portfolio demo: nothing is shipped and payments run in Stripe test mode.
-            </p>
+            <p className="mt-3 max-w-xs text-sm text-muted-foreground">{t('tagline')}</p>
+            <p className="mt-4 max-w-xs text-xs text-muted-foreground">{t('demoNotice')}</p>
             <a
               href={REPO_URL}
               target="_blank"
@@ -62,20 +60,20 @@ export function Footer({ categories }: { categories: NavCategory[] }) {
               className="mt-4 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               <Code className="size-4" aria-hidden="true" />
-              Source on GitHub
+              {t('source')}
             </a>
           </div>
 
-          <FooterColumn title="Shop" links={shopLinks} />
-          <FooterColumn title="Account" links={ACCOUNT_LINKS} />
-          <FooterColumn title="Help" links={HELP_LINKS} />
+          <FooterColumn title={t('shop')} links={shopLinks} />
+          <FooterColumn title={t('account')} links={accountLinks} />
+          <FooterColumn title={t('help')} links={helpLinks} />
         </div>
 
         <div className="mt-12 flex flex-col gap-3 border-t pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} NexStore AI. Built with Next.js, Supabase and Stripe.</p>
+          <p>{t('copyright', { year: new Date().getFullYear() })}</p>
           <p className="inline-flex items-center gap-1.5">
             <Lock className="size-3.5" aria-hidden="true" />
-            Secure checkout by Stripe · Prices in EUR
+            {t('secureCheckout')}
           </p>
         </div>
       </div>

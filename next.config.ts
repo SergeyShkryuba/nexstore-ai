@@ -1,4 +1,8 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
+
+// Points next-intl at the per-request message loader.
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 /** `https://host` from a URL-ish env value, or "" when unset or malformed. */
 function originOf(value: string | undefined): string {
@@ -88,4 +92,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

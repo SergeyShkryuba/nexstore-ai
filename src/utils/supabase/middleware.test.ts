@@ -24,7 +24,8 @@ vi.mock('@supabase/ssr', () => ({
 
 const { updateSession } = await import('./middleware')
 
-const visit = (path: string) => updateSession(new NextRequest(new URL(path, 'https://shop.test')))
+// Concatenated, not new URL(path, base): that reads '//admin' as a host name.
+const visit = (path: string) => updateSession(new NextRequest(`https://shop.test${path}`))
 
 const isRedirectHome = (res: Response) =>
   res.status === 307 && new URL(res.headers.get('location')!).pathname === '/'
@@ -69,8 +70,31 @@ describe('proxy access rules', () => {
     expect((await visit('/profile')).status).toBe(200)
   })
 
+  it.each(['/es/admin', '/ru/admin/orders', '/en/admin/products', '//admin', '/%61dmin', '/es//admin'])(
+    'guards the admin panel whatever the language prefix or spelling: %s',
+    async (path) => {
+      const res = await visit(path)
+      expect(res.status).toBe(307)
+      expect(roleLookup).not.toHaveBeenCalled()
+    },
+  )
+
+  it('checks the role for a prefixed admin path too', async () => {
+    user = { id: 'u1' }
+    role = 'user'
+    expect((await visit('/es/admin')).status).toBe(307)
+    expect(roleLookup).toHaveBeenCalledTimes(1)
+    role = 'admin'
+    expect((await visit('/ru/admin')).status).toBe(200)
+  })
+
+  it('sends a visitor home in their own language', async () => {
+    const res = await visit('/es/profile')
+    expect(new URL(res.headers.get('location')!).pathname).toBe('/es')
+  })
+
   it('does not look up roles, or block, outside /admin', async () => {
-    for (const path of ['/', '/administrator', '/categories/all']) {
+    for (const path of ['/', '/administrator', '/categories/all', '/es', '/es/administrator', '/ru/profiles']) {
       expect((await visit(path)).status).toBe(200)
     }
     expect(roleLookup).not.toHaveBeenCalled()

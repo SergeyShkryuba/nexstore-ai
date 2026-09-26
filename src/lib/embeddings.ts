@@ -41,6 +41,18 @@ export async function contentHash(text: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
+/**
+ * Whether the semantic half should run for this query. gte-small is an
+ * English model with next to no Cyrillic in its vocabulary: a Russian query
+ * comes out as near-noise that still clears the similarity cut-offs and
+ * pulls in unrelated products ("наушники" returned a T-shirt). Those queries
+ * are ranked by keywords alone, against the Russian titles, and the UI says
+ * so. Latin-script languages share enough subwords to be worth trying.
+ */
+export function isEmbeddableQuery(text: string): boolean {
+  return !/\p{Script=Cyrillic}/u.test(text)
+}
+
 /** pgvector's text format: `[0.1,0.2,...]`. */
 export function toPgVector(embedding: readonly number[]): string {
   return `[${embedding.join(',')}]`

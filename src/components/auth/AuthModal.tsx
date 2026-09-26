@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
+import { useRouter } from '@/i18n/navigation'
+import { localizedPath } from '@/i18n/routing'
 import {
   Dialog,
   DialogContent,
@@ -24,6 +26,8 @@ interface AuthModalProps {
 }
 
 export function AuthModal({ isOpen, onClose }: AuthModalProps) {
+  const t = useTranslations('Auth')
+  const locale = useLocale()
   const [isLoading, setIsLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -60,7 +64,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       return
     }
 
-    toast.success('Signed in')
+    toast.success(t('signedIn'))
     handleClose()
     router.refresh()
   }
@@ -78,7 +82,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         },
         // Without this the confirmation link goes to the project's Site URL,
         // which defaults to localhost:3000.
-        emailRedirectTo: authCallbackUrl(window.location.origin, '/'),
+        // Back to the home page in the language they signed up in.
+        emailRedirectTo: authCallbackUrl(window.location.origin, localizedPath('/', locale)),
       },
     })
 
@@ -89,8 +94,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       return
     }
 
-    toast.success('Account created', {
-      description: 'Check your inbox to confirm your email address.',
+    toast.success(t('accountCreated'), {
+      description: t('confirmEmail'),
     })
     handleClose()
   }
@@ -100,7 +105,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setIsLoading(true)
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: authCallbackUrl(window.location.origin, UPDATE_PASSWORD_PATH),
+      redirectTo: authCallbackUrl(window.location.origin, localizedPath(UPDATE_PASSWORD_PATH, locale)),
     })
 
     setIsLoading(false)
@@ -116,7 +121,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   const emailField = (id: string) => (
     <div className="space-y-2">
-      <Label htmlFor={id}>Email</Label>
+      <Label htmlFor={id}>{t('email')}</Label>
       <Input
         id={id}
         type="email"
@@ -136,29 +141,26 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
-          <DialogTitle>{resetMode ? 'Reset your password' : 'Authentication'}</DialogTitle>
+          <DialogTitle>{resetMode ? t('resetTitle') : t('title')}</DialogTitle>
           <DialogDescription>
-            {resetMode
-              ? 'We will email you a link to set a new password.'
-              : 'Sign in to your account or create a new one to start shopping.'}
+            {resetMode ? t('resetDescription') : t('description')}
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="signin" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="signin">Sign In</TabsTrigger>
-            <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            <TabsTrigger value="signin">{t('signInTab')}</TabsTrigger>
+            <TabsTrigger value="signup">{t('signUpTab')}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="signin">
             {resetMode && resetSentTo ? (
               <div className="space-y-4 py-4 text-sm" aria-live="polite">
                 <p>
-                  If an account exists for <strong>{resetSentTo}</strong>, a reset link is on its way.
-                  It works once, for an hour, in this browser.
+                  {t.rich('resetSent', { email: resetSentTo, strong: (chunks) => <strong>{chunks}</strong> })}
                 </p>
                 <Button variant="outline" className="w-full" onClick={backToSignIn}>
-                  Back to sign in
+                  {t('backToSignIn')}
                 </Button>
               </div>
             ) : resetMode ? (
@@ -166,10 +168,10 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 {emailField('reset-email')}
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {spinner}
-                  Send reset link
+                  {t('sendResetLink')}
                 </Button>
                 <Button type="button" variant="ghost" className="w-full" onClick={backToSignIn}>
-                  Back to sign in
+                  {t('backToSignIn')}
                 </Button>
               </form>
             ) : (
@@ -177,13 +179,13 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 {emailField('signin-email')}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="signin-password">Password</Label>
+                    <Label htmlFor="signin-password">{t('password')}</Label>
                     <button
                       type="button"
                       onClick={() => setResetMode(true)}
                       className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                     >
-                      Forgot password?
+                      {t('forgotPassword')}
                     </button>
                   </div>
                   <Input
@@ -198,7 +200,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {spinner}
-                  Sign In
+                  {t('signIn')}
                 </Button>
               </form>
             )}
@@ -207,11 +209,11 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <TabsContent value="signup">
             <form onSubmit={handleSignUp} className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="signup-name">Full Name</Label>
+                <Label htmlFor="signup-name">{t('fullName')}</Label>
                 <Input
                   id="signup-name"
                   autoComplete="name"
-                  placeholder="John Doe"
+                  placeholder={t('namePlaceholder')}
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
@@ -220,7 +222,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
               </div>
               {emailField('signup-email')}
               <div className="space-y-2">
-                <Label htmlFor="signup-password">Password</Label>
+                <Label htmlFor="signup-password">{t('password')}</Label>
                 <Input
                   id="signup-password"
                   type="password"
@@ -231,11 +233,11 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
                 />
-                <p className="text-xs text-muted-foreground">At least {MIN_PASSWORD_LENGTH} characters.</p>
+                <p className="text-xs text-muted-foreground">{t('minLength', { count: MIN_PASSWORD_LENGTH })}</p>
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {spinner}
-                Create Account
+                {t('createAccount')}
               </Button>
             </form>
           </TabsContent>

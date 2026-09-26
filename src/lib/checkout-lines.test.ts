@@ -41,7 +41,7 @@ describe('resolveCartLines', () => {
       ],
       catalogue,
     )
-    expect(result).toEqual({ ok: false, status: 409, error: 'Not enough stock for: Shirt (L)' })
+    expect(result).toEqual({ ok: false, status: 409, code: 'short', items: 'Shirt (L)' })
   })
 
   it('treats two sizes of one product as separate lines', () => {
@@ -61,12 +61,12 @@ describe('resolveCartLines', () => {
   it('refuses a sized product without a size', () => {
     const result = resolveCartLines([{ id: 'shirt', quantity: 1 }], catalogue)
     expect(result.ok).toBe(false)
-    expect(!result.ok && result.error).toContain('Choose a size for Shirt')
+    expect(result).toEqual({ ok: false, status: 409, code: 'sizeRequired', title: 'Shirt' })
   })
 
   it('refuses a size that was removed from the product', () => {
     const result = resolveCartLines([{ id: 'shirt', variantId: 'xl', quantity: 1 }], catalogue)
-    expect(!result.ok && result.error).toContain('no longer sold')
+    expect(result).toEqual({ ok: false, status: 409, code: 'sizeGone', title: 'Shirt' })
   })
 
   it('refuses a size on a product sold without sizes', () => {
@@ -81,7 +81,8 @@ describe('resolveCartLines', () => {
     expect(resolveCartLines([{ id: 'lamp', quantity: 4 }], catalogue)).toEqual({
       ok: false,
       status: 409,
-      error: 'Not enough stock for: Lamp',
+      code: 'short',
+      items: 'Lamp',
     })
   })
 })

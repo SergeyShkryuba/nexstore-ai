@@ -4,9 +4,11 @@ import { ShoppingCart } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { useCartStore } from '@/store/useCartStore'
 import { useCartHydrated } from '@/store/useCartHydrated'
-import Link from 'next/link'
+import { useTranslations } from 'next-intl'
+import { Link } from '@/i18n/navigation'
 
 export function CartButton() {
+  const t = useTranslations('Header')
   const totalItems = useCartStore((state) => state.totalItems())
   const hydrated = useCartHydrated()
 
@@ -22,7 +24,7 @@ export function CartButton() {
         </span>
       )}
       <span className="sr-only">
-        {hydrated && totalItems > 0 ? `Cart, ${totalItems} items` : 'Cart'}
+        {hydrated && totalItems > 0 ? t('cartWithItems', { count: totalItems }) : t('cart')}
       </span>
     </Link>
   )

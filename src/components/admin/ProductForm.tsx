@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@/i18n/navigation'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,8 @@ import { createProduct, updateProduct } from '@/app/actions/admin'
 import { ImageManager } from './ImageManager'
 import { SizesEditor, type SizeRow } from './SizesEditor'
 import { sortVariants } from '@/lib/variants'
+import { PRODUCT_TRANSLATION_LIMITS } from '@/lib/admin-schemas'
+import { TranslationFields, type TranslationRow } from './TranslationFields'
 
 export type EditableProduct = {
   id: string
@@ -21,6 +23,7 @@ export type EditableProduct = {
   category_id: string | null
   image_urls: string[] | null
   variants?: { size: string; inventory_count: number; sort_order?: number | null }[] | null
+  translations?: TranslationRow[] | null
 }
 
 const fieldClassName =
@@ -154,6 +157,12 @@ export function ProductForm({
         <legend className="text-sm font-medium mb-2">Sizes</legend>
         <SizesEditor rows={sizes} onChange={setSizes} />
       </fieldset>
+
+      <TranslationFields
+        initial={product?.translations}
+        nameLabel="Title"
+        limits={PRODUCT_TRANSLATION_LIMITS}
+      />
 
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium mb-2">Images</legend>

@@ -6,12 +6,12 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { createClient } from '@/utils/supabase/client'
 import { toggleWishlist } from '@/app/actions/wishlist'
-import { usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 export function WishlistButton({ productId }: { productId: string }) {
+  const t = useTranslations('Wishlist')
   const [isWishlisted, setIsWishlisted] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const pathname = usePathname()
   const supabase = createClient()
 
   useEffect(() => {
@@ -48,7 +48,7 @@ export function WishlistButton({ productId }: { productId: string }) {
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      toast.error('Please sign in to add items to your wishlist.')
+      toast.error(t('signInFirst'))
       return
     }
 
@@ -56,22 +56,22 @@ export function WishlistButton({ productId }: { productId: string }) {
     setIsWishlisted(!isWishlisted)
     
     try {
-      const res = await toggleWishlist(productId, pathname)
+      const res = await toggleWishlist(productId)
       if (res.error) {
         setIsWishlisted(isWishlisted) // revert
         toast.error(res.error)
       } else {
-        toast.success(isWishlisted ? 'Removed from wishlist' : 'Added to wishlist')
+        toast.success(isWishlisted ? t('removed') : t('added'))
       }
     } catch {
       setIsWishlisted(isWishlisted) // revert
-      toast.error('Failed to update wishlist')
+      toast.error(t('failed'))
     }
   }
 
   if (isLoading) {
     return (
-      <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full bg-background/80 opacity-50" disabled>
+      <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full bg-background/80 opacity-50" disabled aria-label={t('add')}>
         <Heart className="w-4 h-4 text-muted-foreground" />
       </Button>
     )
@@ -82,6 +82,8 @@ export function WishlistButton({ productId }: { productId: string }) {
       variant="ghost" 
       size="icon" 
       onClick={handleToggle}
+      aria-label={isWishlisted ? t('remove') : t('add')}
+      aria-pressed={isWishlisted}
       className={`w-8 h-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background/90 transition-colors ${
         isWishlisted ? 'text-red-500 hover:text-red-600' : 'text-muted-foreground hover:text-foreground'
       }`}

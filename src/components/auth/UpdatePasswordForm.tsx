@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { useRouter } from '@/i18n/navigation'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -12,6 +13,7 @@ import { MIN_PASSWORD_LENGTH } from '@/lib/auth-redirect'
 
 /** Sets a new password for the signed-in user (reached from a reset email). */
 export function UpdatePasswordForm() {
+  const t = useTranslations('Auth')
   const router = useRouter()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -31,7 +33,7 @@ export function UpdatePasswordForm() {
       toast.error(error.message)
       return
     }
-    toast.success('Password updated', { description: 'You are signed in with the new password.' })
+    toast.success(t('passwordUpdated'), { description: t('passwordUpdatedDescription') })
     router.push('/profile')
     router.refresh()
   }
@@ -39,7 +41,7 @@ export function UpdatePasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="new-password">New password</Label>
+        <Label htmlFor="new-password">{t('newPassword')}</Label>
         <Input
           id="new-password"
           type="password"
@@ -50,10 +52,10 @@ export function UpdatePasswordForm() {
           onChange={(e) => setPassword(e.target.value)}
           disabled={isSaving}
         />
-        <p className="text-xs text-muted-foreground">At least {MIN_PASSWORD_LENGTH} characters.</p>
+        <p className="text-xs text-muted-foreground">{t('minLength', { count: MIN_PASSWORD_LENGTH })}</p>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="confirm-password">Repeat it</Label>
+        <Label htmlFor="confirm-password">{t('repeatPassword')}</Label>
         <Input
           id="confirm-password"
           type="password"
@@ -67,7 +69,7 @@ export function UpdatePasswordForm() {
         />
         {mismatch && (
           <p id="password-mismatch" className="text-xs text-destructive">
-            The passwords do not match.
+            {t('mismatch')}
           </p>
         )}
       </div>
@@ -77,7 +79,7 @@ export function UpdatePasswordForm() {
         disabled={isSaving || password.length < MIN_PASSWORD_LENGTH || password !== confirm}
       >
         {isSaving && <Loader2 className="animate-spin" aria-hidden="true" />}
-        Save new password
+        {t('saveNewPassword')}
       </Button>
     </form>
   )

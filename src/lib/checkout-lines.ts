@@ -35,7 +35,17 @@ export type CheckoutLine = {
   quantity: number
 }
 
-export type LinesResult = { ok: true; lines: CheckoutLine[] } | { ok: false; status: 409; error: string }
+/**
+ * Why a cart was refused, as a code with the product names it concerns; the
+ * route words it in the shopper's language (`Checkout.lines.*` messages).
+ */
+export type LineError =
+  | { code: 'unavailable' }
+  | { code: 'sizeRequired'; title: string }
+  | { code: 'sizeGone'; title: string }
+  | { code: 'short'; items: string }
+
+export type LinesResult = { ok: true; lines: CheckoutLine[] } | ({ ok: false; status: 409 } & LineError)
 
 export function resolveCartLines(items: readonly RequestedItem[], products: readonly CatalogueProduct[]): LinesResult {
   // One line per product and size. Duplicates are merged, so repeating a line
@@ -54,7 +64,7 @@ export function resolveCartLines(items: readonly RequestedItem[], products: read
   for (const item of merged.values()) {
     const product = byId.get(item.id)
     if (!product) {
-      return { ok: false, status: 409, error: 'Some items are no longer available. Please refresh your cart.' }
+      return { ok: false, status: 409, code: 'unavailable' }
     }
 
     const variants = product.variants ?? []
@@ -63,14 +73,14 @@ export function resolveCartLines(items: readonly RequestedItem[], products: read
     if (variants.length > 0) {
       if (!item.variantId) {
         // An old cart, or a hand-made request: a sized product needs a size.
-        return { ok: false, status: 409, error: `Choose a size for ${product.title}: remove it from the cart and add it again.` }
+        return { ok: false, status: 409, code: 'sizeRequired', title: product.title }
       }
       variant = variants.find((v) => v.id === item.variantId) ?? null
       if (!variant) {
-        return { ok: false, status: 409, error: `That size of ${product.title} is no longer sold. Please pick another.` }
+        return { ok: false, status: 409, code: 'sizeGone', title: product.title }
       }
     } else if (item.variantId) {
-      return { ok: false, status: 409, error: 'Some items are no longer available. Please refresh your cart.' }
+      return { ok: false, status: 409, code: 'unavailable' }
     }
 
     const available = variant ? variant.inventory_count : product.inventory_count
@@ -87,6 +97,6 @@ export function resolveCartLines(items: readonly RequestedItem[], products: read
     })
   }
 
-  if (short.length > 0) return { ok: false, status: 409, error: `Not enough stock for: ${short.join(', ')}` }
+  if (short.length > 0) return { ok: false, status: 409, code: 'short', items: short.join(', ') }
   return { ok: true, lines }
 }

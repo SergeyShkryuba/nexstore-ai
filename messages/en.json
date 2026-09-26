@@ -1,0 +1,462 @@
+{
+  "Metadata": {
+    "title": "NexStore AI - Next Generation E-commerce",
+    "description": "A full-stack Next.js storefront: catalogue search, cart, Stripe checkout and an admin panel.",
+    "tagline": "Experience the future of shopping with our AI-powered e-commerce platform."
+  },
+  "Layout": {
+    "skipToContent": "Skip to content"
+  },
+  "Header": {
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "admin": "Admin",
+    "adminPanel": "Admin panel",
+    "wishlist": "Wishlist",
+    "profile": "Profile",
+    "signOut": "Sign out",
+    "signIn": "Sign in",
+    "language": "Language",
+    "cart": "Cart",
+    "cartWithItems": "Cart, {count, plural, one {# item} other {# items}}",
+    "toggleTheme": "Toggle theme"
+  },
+  "Footer": {
+    "tagline": "A storefront you can search in your own words — by meaning, not only by keywords.",
+    "demoNotice": "Portfolio demo: nothing is shipped and payments run in Stripe test mode.",
+    "source": "Source on GitHub",
+    "shop": "Shop",
+    "account": "Account",
+    "help": "Help",
+    "allProducts": "All products",
+    "underBudget": "Under €{amount}",
+    "myAccount": "My account",
+    "wishlist": "Wishlist",
+    "cart": "Cart",
+    "shippingReturns": "Shipping & returns",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "about": "About this project",
+    "copyright": "© {year} NexStore AI. Built with Next.js, Supabase and Stripe.",
+    "secureCheckout": "Secure checkout by Stripe · Prices in EUR"
+  },
+  "Breadcrumbs": {
+    "label": "Breadcrumb"
+  },
+  "Stock": {
+    "out": "Out of stock",
+    "low": "Only {count} left",
+    "in": "In stock"
+  },
+  "ProductCard": {
+    "added": "Added to cart",
+    "noImage": "No image available",
+    "soldOut": "Sold out",
+    "sizesInStock": "Sizes in stock:",
+    "chooseSize": "Choose size",
+    "addToCart": "Add to cart"
+  },
+  "ProductPurchase": {
+    "added": "Added to cart",
+    "addedWithSize": "{title} · size {size}",
+    "size": "Size",
+    "sizeSoldOut": "sold out",
+    "lowInSize": "{stock} in {size}",
+    "outOfStock": "Out of stock",
+    "chooseSize": "Choose a size",
+    "addToCart": "Add to cart"
+  },
+  "Home": {
+    "shopByCategory": "Shop by category",
+    "shopNow": "Shop now",
+    "newArrivals": "New arrivals",
+    "viewAll": "View all",
+    "underBudget": "Under €{amount}",
+    "allUnderBudget": "All under €{amount}"
+  },
+  "Product": {
+    "notFound": "Product not found",
+    "home": "Home",
+    "allProducts": "All products",
+    "ratedOutOf5": "Rated {rating} out of 5",
+    "reviewCount": "{count, plural, one {# review} other {# reviews}}",
+    "noReviews": "No reviews yet",
+    "warranty": "1-year warranty",
+    "freeShipping": "Free shipping",
+    "returns": "30-day returns",
+    "specifications": "Specifications",
+    "noSpecifications": "No specifications provided.",
+    "related": "Related products"
+  },
+  "Category": {
+    "home": "Home",
+    "allProducts": "All products",
+    "notFound": "Category not found",
+    "empty": "No products found in this category."
+  },
+  "Catalog": {
+    "sortBy": "Sort by",
+    "sort": {
+      "newest": "Newest",
+      "price-asc": "Price: low to high",
+      "price-desc": "Price: high to low",
+      "name": "Name: A–Z"
+    },
+    "inStockOnly": "In stock only",
+    "clearFilters": "Clear filters",
+    "size": "Size",
+    "minPrice": "Min price, €",
+    "maxPrice": "Max price, €",
+    "any": "Any",
+    "apply": "Apply",
+    "count": "{count, plural, one {# product} other {# products}}",
+    "countMatching": "{shown} of {total} products match",
+    "noMatches": "No products match these filters.",
+    "showMore": "Show more ({left} left)"
+  },
+  "Search": {
+    "title": "Search the catalogue <em>in your own words</em>",
+    "intro": "Describe what you need — even without the product’s name, and with a budget like “under 60” — and search matches it by meaning as well as by keywords.",
+    "label": "Search products",
+    "placeholder": "e.g., noise cancelling headphones under 300",
+    "searching": "Searching",
+    "submit": "Search",
+    "suggestions": "Suggested products",
+    "try": "Try:",
+    "examples": [
+      "wireless headphones",
+      "smart home under 60",
+      "something to keep me warm in winter",
+      "film my surfing trip"
+    ],
+    "results": "{count, plural, one {# result} other {# results}}",
+    "noMatches": "No matches",
+    "strategy": {
+      "hybrid": "semantic + keyword ranking",
+      "lexical": "keyword ranking only"
+    },
+    "budget": "budget ≤ {amount}",
+    "matchedTerms": "matched: {terms}",
+    "matchedByMeaning": "matched by meaning",
+    "similarity": "similarity {value}",
+    "nothingMatches": "Nothing in the catalogue matches that. Try fewer words, or raise the budget.",
+    "failed": "Search failed",
+    "tryLater": "Please try again later.",
+    "api": {
+      "tooMany": "Too many searches. Please wait a moment and try again.",
+      "tooShort": "Type at least 2 characters.",
+      "tooLong": "That search is too long.",
+      "invalid": "That search could not be read.",
+      "unavailable": "Search is temporarily unavailable.",
+      "failed": "Search failed. Please try again."
+    }
+  },
+  "Wishlist": {
+    "signInFirst": "Please sign in to add items to your wishlist.",
+    "added": "Added to wishlist",
+    "removed": "Removed from wishlist",
+    "failed": "Could not update your wishlist.",
+    "add": "Add to wishlist",
+    "remove": "Remove from wishlist"
+  },
+  "Gallery": {
+    "noImage": "No image available",
+    "alt": "{title}, image {index} of {count}",
+    "previous": "Previous image",
+    "next": "Next image",
+    "openFull": "Open full size: {alt}",
+    "show": "Show image {index} of {count}"
+  },
+  "Auth": {
+    "title": "Sign in",
+    "description": "Sign in to your account or create a new one to start shopping.",
+    "resetTitle": "Reset your password",
+    "resetDescription": "We will email you a link to set a new password.",
+    "signInTab": "Sign in",
+    "signUpTab": "Sign up",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "signIn": "Sign in",
+    "signedIn": "Signed in",
+    "fullName": "Full name",
+    "namePlaceholder": "Jane Doe",
+    "minLength": "At least {count} characters.",
+    "createAccount": "Create account",
+    "accountCreated": "Account created",
+    "confirmEmail": "Check your inbox to confirm your email address.",
+    "sendResetLink": "Send reset link",
+    "backToSignIn": "Back to sign in",
+    "resetSent": "If an account exists for <strong>{email}</strong>, a reset link is on its way. It works once, for an hour, in this browser.",
+    "newPassword": "New password",
+    "repeatPassword": "Repeat it",
+    "mismatch": "The passwords do not match.",
+    "saveNewPassword": "Save new password",
+    "passwordUpdated": "Password updated",
+    "passwordUpdatedDescription": "You are signed in with the new password."
+  },
+  "Cart": {
+    "title": "Your cart",
+    "empty": "Your cart is empty",
+    "continueShopping": "Continue shopping",
+    "size": "Size {size}",
+    "lineWithSize": "{title}, size {size}",
+    "decrease": "Decrease quantity of {item}",
+    "increase": "Increase quantity of {item}",
+    "remove": "Remove {item} from cart",
+    "maxPerOrder": "At most {count} per order",
+    "summary": "Order summary",
+    "total": "Total",
+    "checkout": "Proceed to checkout",
+    "reverified": "Prices are re-verified on the server before payment.",
+    "cancelled": "Checkout cancelled. Your cart is still here.",
+    "checkoutFailed": "Checkout failed",
+    "noPaymentUrl": "No payment URL was returned.",
+    "checkoutError": "An error occurred during checkout"
+  },
+  "Checkout": {
+    "notConfigured": "Checkout is not configured on this deployment.",
+    "tooManyAttempts": "Too many checkout attempts. Please wait a few minutes and try again.",
+    "invalidCart": "Your cart could not be read. Please refresh the page.",
+    "emptyCart": "Your cart is empty.",
+    "maxPerLine": "At most {max} of one item per order.",
+    "verifyFailed": "Could not verify your cart.",
+    "lines": {
+      "unavailable": "Some items are no longer available. Please refresh your cart.",
+      "sizeRequired": "Choose a size for {title}: remove it from the cart and add it again.",
+      "sizeGone": "That size of {title} is no longer sold. Please pick another.",
+      "short": "Not enough stock for: {items}"
+    },
+    "lineName": "{title} — size {size}",
+    "freeShipping": "Free standard shipping",
+    "unavailable": "Checkout is temporarily unavailable.",
+    "tooManyOpen": "You already have several checkouts open. Finish one of them, or try again in about half an hour when they expire.",
+    "anItem": "an item in your cart",
+    "takenMeanwhile": "Not enough stock for: {item}. Someone may be checking it out right now.",
+    "sizesChanged": "Sizes changed for an item in your cart. Please refresh your cart and choose a size.",
+    "failed": "Checkout failed. Please try again."
+  },
+  "CheckoutSuccess": {
+    "title": "Payment successful!",
+    "thanks": "Thank you for your purchase. Your order has been placed.",
+    "session": "Session ID: {id}",
+    "orders": "View order history",
+    "continue": "Continue shopping",
+    "loading": "Loading…"
+  },
+  "WishlistPage": {
+    "title": "Your wishlist",
+    "empty": "Your wishlist is empty",
+    "emptyHint": "Save items you love here to easily find them later.",
+    "startShopping": "Start shopping"
+  },
+  "Profile": {
+    "title": "My account",
+    "details": "Profile details",
+    "fullName": "Full name",
+    "notProvided": "Not provided",
+    "email": "Email",
+    "role": "Role",
+    "roleAdmin": "Administrator",
+    "roleUser": "Customer",
+    "orders": "Order history",
+    "noOrders": "You haven’t placed any orders yet.",
+    "orderNumber": "Order #{id}"
+  },
+  "OrderStatus": {
+    "pending": "Pending",
+    "paid": "Paid",
+    "shipped": "Shipped",
+    "delivered": "Delivered",
+    "cancelled": "Cancelled",
+    "refunded": "Refunded"
+  },
+  "Order": {
+    "metaTitle": "Order details",
+    "allOrders": "All orders",
+    "title": "Order #{id}",
+    "placed": "Placed {date}",
+    "refunded": "This order was refunded.",
+    "cancelled": "This order was cancelled.",
+    "progress": "Order progress",
+    "stepDone": "(done)",
+    "stepPending": "(not yet)",
+    "items": "Items",
+    "removedProduct": "No longer in the catalogue",
+    "size": "Size {size}",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "free": "Free",
+    "totalPaid": "Total paid",
+    "delivery": "Delivery",
+    "noAddress": "No delivery address on this order.",
+    "contactEmail": "Contact email: {email}"
+  },
+  "Reviews": {
+    "title": "Customer reviews",
+    "none": "No reviews yet. Be the first to review this product!",
+    "anonymous": "Anonymous",
+    "verified": "Verified purchase",
+    "write": "Write a review",
+    "rating": "Rating",
+    "stars": "{count, plural, one {# star} other {# stars}}",
+    "comment": "Comment (optional)",
+    "placeholder": "What did you like or dislike?",
+    "verifiedHint": "Reviews from shoppers who bought the product are marked “Verified purchase”.",
+    "submit": "Submit review",
+    "submitting": "Submitting…",
+    "submitted": "Review submitted",
+    "signInFirst": "You must be signed in to leave a review.",
+    "invalid": {
+      "product": "That product could not be found.",
+      "rating": "Choose a rating from 1 to 5.",
+      "tooLong": "Keep the review under {max} characters."
+    },
+    "duplicate": "You have already reviewed this product.",
+    "failed": "Failed to add your review."
+  },
+  "Error": {
+    "title": "Something went wrong",
+    "description": "The page could not be rendered. This is usually temporary.",
+    "reference": "Reference: {digest}",
+    "retry": "Try again"
+  },
+  "NotFound": {
+    "title": "We couldn’t find that page",
+    "description": "The product or category you followed may have been removed or renamed.",
+    "home": "Go home",
+    "browse": "Browse all products"
+  },
+  "AuthError": {
+    "metaTitle": "Link expired",
+    "title": "This link no longer works",
+    "expired": "Email links expire after an hour and work only once. Links from the default emails also have to be opened in the same browser you requested them from.",
+    "recovery": "Ask for a new one: open Sign in and choose “Forgot password?”.",
+    "confirm": "If you were confirming your email, it may already be confirmed — try signing in.",
+    "back": "Back to the store"
+  },
+  "UpdatePassword": {
+    "title": "Set a new password",
+    "for": "For {email}",
+    "noSession": "Open this page from the link in your password-reset email. To get one, open Sign in and choose “Forgot password?”.",
+    "back": "Back to the store"
+  },
+  "Pages": {
+    "demoNotice": "NexStore AI is a portfolio project. It does not sell or ship anything, and checkout runs in Stripe test mode, so no real payment is ever taken.",
+    "about": {
+      "title": "About this project",
+      "metaDescription": "How NexStore AI is built: hybrid semantic search, Supabase, Stripe and Next.js.",
+      "intro": "NexStore AI is a full-stack e-commerce storefront, built as a portfolio project. It is a real, working application — not a clickable mockup — but it is not running a business.",
+      "sections": [
+        {
+          "heading": "What is worth a look",
+          "items": [
+            "<b>Search by meaning.</b> Queries are embedded with the gte-small model and matched against the catalogue with pgvector, then fused with a keyword ranker. “Film my surfing trip” finds the action camera without sharing a word with it.",
+            "<b>A checkout you cannot tamper with.</b> The browser sends only product ids and quantities; prices are re-read from the database before Stripe sees them.",
+            "<b>Row-level security everywhere.</b> Every table is protected in Postgres itself, not only in the UI.",
+            "<b>Three languages.</b> The interface and the catalogue are in English, Spanish and Russian, each at its own URL.",
+            "<b>An admin panel</b> for products, photos, stock and order status."
+          ]
+        },
+        {
+          "heading": "Stack",
+          "paragraphs": [
+            "Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · next-intl · Supabase (Postgres, Auth, Storage, Edge Functions, pgvector) · Stripe · Zod · Vitest, deployed on Vercel."
+          ]
+        },
+        {
+          "heading": "Source",
+          "paragraphs": ["The code, architecture notes and known limitations are on <link>GitHub</link>."]
+        }
+      ]
+    },
+    "privacy": {
+      "title": "Privacy",
+      "metaDescription": "What NexStore AI stores about you, where, and why.",
+      "intro": "Short, because the store collects very little.",
+      "sections": [
+        { "heading": "Demo store", "demo": true },
+        {
+          "heading": "What is stored",
+          "items": [
+            "<b>Your account</b> — email address and, if you give one, your name. Held by Supabase Auth.",
+            "<b>Your activity</b> — orders, wishlist and reviews, tied to your account in the store’s Supabase database. Row-level security means only you (and the store admin, for orders) can read them.",
+            "<b>Your cart</b> — kept in your own browser’s local storage, not on a server.",
+            "<b>Search queries</b> — processed to find products and not saved.",
+            "<b>Request counters</b> — to stop floods of checkout and search requests, the store counts requests per visitor for a few minutes. It stores a one-way keyed hash of your IP address (or account id), never the address itself, and deletes the counters within a day.",
+            "<b>Error reports</b> — if the deployment has error monitoring (Sentry) turned on, a crash report records the page, browser type and the technical error. Cookies, IP addresses, email addresses, form contents and URL query strings are removed before it is sent."
+          ]
+        },
+        {
+          "heading": "Payments",
+          "paragraphs": ["Checkout happens on Stripe’s own page. Card details go straight to Stripe and never pass through this store’s servers."]
+        },
+        {
+          "heading": "Cookies and tracking",
+          "paragraphs": [
+            "The only cookies are the ones that keep you signed in and one that remembers the language you chose. There is no analytics, no advertising and no third-party tracking; the error reports above are the only thing that may go to a third party. Fonts are self-hosted, so loading a page does not contact Google."
+          ]
+        },
+        {
+          "heading": "Deleting your data",
+          "paragraphs": ["To have your account and everything tied to it removed, open an issue on the <link>project’s GitHub</link>."]
+        }
+      ]
+    },
+    "terms": {
+      "title": "Terms of use",
+      "metaDescription": "The terms for using the NexStore AI demo store.",
+      "sections": [
+        {
+          "heading": "A demo, not a shop",
+          "demo": true,
+          "paragraphs": ["Placing an order here creates a test order only. No contract of sale is formed and nothing will be delivered."]
+        },
+        {
+          "heading": "Products and prices",
+          "paragraphs": ["Product names, descriptions, stock levels and prices are sample data. Photos come from Unsplash and are used under the Unsplash License."]
+        },
+        {
+          "heading": "Accounts and reviews",
+          "items": [
+            "Keep your sign-in details to yourself; you are responsible for activity on your account.",
+            "Reviews must be your own and must not be abusive or unlawful. They may be removed.",
+            "Test data, including accounts, may be reset at any time."
+          ]
+        },
+        {
+          "heading": "No warranty",
+          "paragraphs": ["The site is provided as is, without any guarantee that it is available, accurate or free of errors."]
+        }
+      ]
+    },
+    "shipping": {
+      "title": "Shipping & returns",
+      "metaDescription": "Delivery times, free shipping, 30-day returns and the 1-year warranty.",
+      "intro": "The policy a real NexStore would run — the one the product pages promise.",
+      "sections": [
+        { "heading": "Demo store", "demo": true },
+        {
+          "heading": "Shipping",
+          "items": [
+            "Free standard shipping on every order within the EU.",
+            "Orders are dispatched within 1–2 business days and usually arrive 2–5 business days later.",
+            "You can follow each order’s status — paid, shipped, delivered — on your account page."
+          ]
+        },
+        {
+          "heading": "Returns",
+          "items": [
+            "Return any item within 30 days of delivery, for any reason.",
+            "Items must be unused and in their original packaging.",
+            "Refunds go back to the original payment method once the return arrives."
+          ]
+        },
+        {
+          "heading": "Warranty",
+          "paragraphs": ["Every product carries a 1-year warranty against manufacturing defects. This does not affect your statutory rights as a consumer in the EU."]
+        }
+      ]
+    }
+  }
+}

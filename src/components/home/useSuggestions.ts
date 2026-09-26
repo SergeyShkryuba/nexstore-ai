@@ -10,7 +10,7 @@ const DEBOUNCE_MS = 150
  * Each new keystroke aborts the previous request, so a slow answer for "hea"
  * can never overwrite the answer for "head".
  */
-export function useSuggestions(query: string, enabled: boolean): Suggestion[] {
+export function useSuggestions(query: string, enabled: boolean, locale: string): Suggestion[] {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const q = query.trim()
   const active = enabled && q.length >= 2
@@ -20,7 +20,7 @@ export function useSuggestions(query: string, enabled: boolean): Suggestion[] {
     const controller = new AbortController()
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/search/suggest?q=${encodeURIComponent(q)}`, {
+        const res = await fetch(`/api/search/suggest?q=${encodeURIComponent(q)}&locale=${locale}`, {
           signal: controller.signal,
         })
         if (!res.ok) return
@@ -34,7 +34,7 @@ export function useSuggestions(query: string, enabled: boolean): Suggestion[] {
       clearTimeout(timer)
       controller.abort()
     }
-  }, [q, active])
+  }, [q, active, locale])
 
   // The last answer stays visible while the next one loads, which avoids the
   // list flickering shut on every keystroke.

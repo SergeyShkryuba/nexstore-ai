@@ -48,9 +48,15 @@ const EU_REGIONS = EU_COUNTRIES.map((country) => ({ '@type': 'DefinedRegion', ad
 
 export function productJsonLd(
   product: ProductInput,
-  options: { siteUrl: string; category?: string | null; ratings?: readonly number[] },
+  options: {
+    siteUrl: string
+    category?: string | null
+    ratings?: readonly number[]
+    /** The page's path, with its language prefix; defaults to the English one. */
+    path?: string
+  },
 ): Json {
-  const url = new URL(`/product/${product.slug}`, options.siteUrl).href
+  const url = new URL(options.path ?? `/product/${product.slug}`, options.siteUrl).href
   const ratings = options.ratings ?? []
 
   return {

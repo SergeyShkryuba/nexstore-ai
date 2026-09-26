@@ -530,7 +530,16 @@ grant execute on function public.set_product_variants(uuid, jsonb) to authentica
 -- p_variants null leaves sizes untouched; an empty array removes them all.
 -- Stock: with sizes, the total is the sum of the sizes (trigger); without,
 -- it is p_fields.inventory_count. Runs as the caller: RLS applies.
-create or replace function public.save_product(p_product_id uuid, p_fields jsonb, p_variants jsonb default null)
+-- p_translations ({"es": {"title", "description"}, "ru": …}) is saved in the
+-- same transaction (see set_product_translations); null leaves them alone.
+drop function if exists public.save_product(uuid, jsonb, jsonb);
+
+create or replace function public.save_product(
+  p_product_id uuid,
+  p_fields jsonb,
+  p_variants jsonb default null,
+  p_translations jsonb default null
+)
 returns uuid
 language plpgsql
 security invoker
@@ -576,12 +585,16 @@ begin
     where id = v_id;
   end if;
 
+  if p_translations is not null then
+    perform public.set_product_translations(v_id, p_translations);
+  end if;
+
   return v_id;
 end;
 $$;
 
-revoke all on function public.save_product(uuid, jsonb, jsonb) from public, anon;
-grant execute on function public.save_product(uuid, jsonb, jsonb) to authenticated, service_role;
+revoke all on function public.save_product(uuid, jsonb, jsonb, jsonb) from public, anon;
+grant execute on function public.save_product(uuid, jsonb, jsonb, jsonb) to authenticated, service_role;
 
 -- ================= Stock reservations and paid orders ======================
 -- Checkout reserves stock before sending the shopper to Stripe, so two people
@@ -963,3 +976,144 @@ revoke all on function public.rate_limit_hit(text, integer, integer) from public
 revoke all on function public.purge_rate_limits() from public, anon, authenticated;
 grant execute on function public.rate_limit_hit(text, integer, integer) to service_role;
 grant execute on function public.purge_rate_limits() to service_role;
+
+-- ======================== Translations =====================================
+-- The catalogue is written in English in `products` and `categories`; these
+-- hold Spanish and Russian versions. A missing row, or a missing field in it,
+-- falls back to English, so a new product shows up in every language at once
+-- and can be translated later. `attributes` is the whole translated object
+-- (keys and values), shown as the product's specifications.
+
+create table if not exists product_translations (
+  product_id uuid not null references products(id) on delete cascade,
+  locale text not null check (locale in ('es', 'ru')),
+  title text not null check (char_length(title) between 1 and 200),
+  description text check (char_length(description) <= 5000),
+  attributes jsonb,
+  updated_at timestamptz not null default now(),
+  primary key (product_id, locale)
+);
+
+create table if not exists category_translations (
+  category_id uuid not null references categories(id) on delete cascade,
+  locale text not null check (locale in ('es', 'ru')),
+  name text not null check (char_length(name) between 1 and 100),
+  description text check (char_length(description) <= 1000),
+  updated_at timestamptz not null default now(),
+  primary key (category_id, locale)
+);
+
+alter table product_translations enable row level security;
+alter table category_translations enable row level security;
+
+-- Readable by everyone, like the catalogue itself; written by admins only.
+drop policy if exists "Product translations are public" on product_translations;
+create policy "Product translations are public"
+  on product_translations for select using (true);
+drop policy if exists "Admins manage product translations" on product_translations;
+create policy "Admins manage product translations"
+  on product_translations for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "Category translations are public" on category_translations;
+create policy "Category translations are public"
+  on category_translations for select using (true);
+drop policy if exists "Admins manage category translations" on category_translations;
+create policy "Admins manage category translations"
+  on category_translations for all using (public.is_admin()) with check (public.is_admin());
+
+-- Writes a product's Spanish and Russian text from the admin form. For each
+-- language sent: a title saves (or replaces) the translation, an empty title
+-- removes it, so the page falls back to English. Translated specifications
+-- (`attributes`) are not on the form and are kept as they are. Called by
+-- save_product(), inside its transaction. Runs as the caller: RLS applies.
+create or replace function public.set_product_translations(p_product_id uuid, p_translations jsonb)
+returns void
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_locale text;
+  v_t jsonb;
+begin
+  foreach v_locale in array array['es', 'ru'] loop
+    v_t := p_translations -> v_locale;
+    continue when v_t is null;
+
+    if coalesce(btrim(v_t ->> 'title'), '') = '' then
+      delete from product_translations where product_id = p_product_id and locale = v_locale;
+    else
+      insert into product_translations (product_id, locale, title, description)
+      values (p_product_id, v_locale, btrim(v_t ->> 'title'), nullif(btrim(v_t ->> 'description'), ''))
+      on conflict (product_id, locale) do update
+        set title = excluded.title,
+            description = excluded.description,
+            updated_at = now();
+    end if;
+  end loop;
+end;
+$$;
+
+revoke all on function public.set_product_translations(uuid, jsonb) from public, anon;
+grant execute on function public.set_product_translations(uuid, jsonb) to authenticated, service_role;
+
+-- Saves a category and its translations as one transaction, like
+-- save_product(). p_category_id null creates (p_fields.slug required); on
+-- edit the slug is kept so links keep working. Runs as the caller: RLS applies.
+create or replace function public.save_category(
+  p_category_id uuid,
+  p_fields jsonb,
+  p_translations jsonb default null
+)
+returns uuid
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_id uuid := p_category_id;
+  v_locale text;
+  v_t jsonb;
+begin
+  if not public.is_admin() then
+    raise exception 'forbidden';
+  end if;
+
+  if v_id is null then
+    insert into categories (name, slug, description, image_url)
+    values (p_fields ->> 'name', p_fields ->> 'slug', p_fields ->> 'description', nullif(p_fields ->> 'image_url', ''))
+    returning id into v_id;
+  else
+    update categories
+    set name = p_fields ->> 'name',
+        description = p_fields ->> 'description',
+        image_url = nullif(p_fields ->> 'image_url', '')
+    where id = v_id;
+    if not found then
+      raise exception 'category_not_found';
+    end if;
+  end if;
+
+  if p_translations is not null then
+    foreach v_locale in array array['es', 'ru'] loop
+      v_t := p_translations -> v_locale;
+      continue when v_t is null;
+      if coalesce(btrim(v_t ->> 'title'), '') = '' then
+        delete from category_translations where category_id = v_id and locale = v_locale;
+      else
+        insert into category_translations (category_id, locale, name, description)
+        values (v_id, v_locale, btrim(v_t ->> 'title'), nullif(btrim(v_t ->> 'description'), ''))
+        on conflict (category_id, locale) do update
+          set name = excluded.name,
+              description = excluded.description,
+              updated_at = now();
+      end if;
+    end loop;
+  end if;
+
+  return v_id;
+end;
+$$;
+
+revoke all on function public.save_category(uuid, jsonb, jsonb) from public, anon;
+grant execute on function public.save_category(uuid, jsonb, jsonb) to authenticated, service_role;

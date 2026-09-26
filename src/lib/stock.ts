@@ -12,18 +12,14 @@ export function stockLevel(count: number | null | undefined): StockLevel | null 
 }
 
 /**
- * Shopper-facing wording. Exact counts are only shown when low: "Only 3 left"
- * helps a decision, "297 in stock" is noise.
+ * Shopper-facing wording, in the visitor's language: `translate` looks up the
+ * `Stock` messages (`out`, `low`, `in`). Exact counts are only shown when low:
+ * "Only 3 left" helps a decision, "297 in stock" is noise.
  */
-export function stockLabel(count: number | null | undefined): string | null {
-  switch (stockLevel(count)) {
-    case 'out':
-      return 'Out of stock'
-    case 'low':
-      return `Only ${count} left`
-    case 'in':
-      return 'In stock'
-    default:
-      return null
-  }
+export function stockLabel(
+  count: number | null | undefined,
+  translate: (key: StockLevel, values: { count: number }) => string,
+): string | null {
+  const level = stockLevel(count)
+  return level ? translate(level, { count: count as number }) : null
 }

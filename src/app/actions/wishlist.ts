@@ -2,14 +2,14 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { safeNextPath } from '@/lib/auth-redirect'
+import { getTranslations } from 'next-intl/server'
 
-export async function toggleWishlist(productId: string, currentPath: string) {
-  const supabase = await createClient()
+export async function toggleWishlist(productId: string) {
+  const [supabase, t] = await Promise.all([createClient(), getTranslations('Wishlist')])
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
-    return { error: 'You must be logged in to add to wishlist' }
+    return { error: t('signInFirst') }
   }
 
   // Check if it exists
@@ -22,7 +22,7 @@ export async function toggleWishlist(productId: string, currentPath: string) {
 
   if (readError) {
     console.error('Wishlist: read failed', readError)
-    return { error: 'Could not update your wishlist' }
+    return { error: t('failed') }
   }
 
   // Both branches used to ignore their result and report success regardless.
@@ -34,12 +34,12 @@ export async function toggleWishlist(productId: string, currentPath: string) {
   // wishlist is in the state the shopper asked for, so that is not a failure.
   if (error && error.code !== '23505') {
     console.error('Wishlist: write failed', error)
-    return { error: 'Could not update your wishlist' }
+    return { error: t('failed') }
   }
 
-  // The path comes from the browser: only same-site paths are revalidated.
-  revalidatePath(safeNextPath(currentPath))
-  revalidatePath('/wishlist')
+  // The wishlist page in every language. (The heart on product cards reads
+  // its state in the browser, so the page it was clicked on needs nothing.)
+  revalidatePath('/[locale]/wishlist', 'page')
 
   return { success: true }
 }

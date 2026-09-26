@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { X } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -55,6 +56,7 @@ export function ProductGrid({ products }: { products: readonly CatalogItem[] }) 
  * product in the HTML.
  */
 export function CatalogView({ products }: { products: readonly CatalogItem[] }) {
+  const t = useTranslations('Catalog')
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -73,7 +75,7 @@ export function CatalogView({ products }: { products: readonly CatalogItem[] }) 
     <div className="space-y-6">
       <div className="flex flex-wrap items-end gap-x-6 gap-y-4 rounded-xl border p-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="catalog-sort">Sort by</Label>
+          <Label htmlFor="catalog-sort">{t('sortBy')}</Label>
           <select
             id="catalog-sort"
             className={selectClassName}
@@ -82,7 +84,7 @@ export function CatalogView({ products }: { products: readonly CatalogItem[] }) 
           >
             {SORT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
-                {option.label}
+                {t(`sort.${option.value}`)}
               </option>
             ))}
           </select>
@@ -103,13 +105,13 @@ export function CatalogView({ products }: { products: readonly CatalogItem[] }) 
             checked={filters.inStock}
             onChange={(e) => update({ inStock: e.target.checked })}
           />
-          In stock only
+          {t('inStockOnly')}
         </label>
 
         {hasActiveFilters(filters) && (
           <Button variant="ghost" onClick={() => router.replace(pathname, { scroll: false })}>
             <X aria-hidden="true" />
-            Clear filters
+            {t('clearFilters')}
           </Button>
         )}
       </div>
@@ -118,7 +120,7 @@ export function CatalogView({ products }: { products: readonly CatalogItem[] }) 
         <div className="space-y-4 rounded-xl border p-4">
           {facets.sizes.length > 0 && (
             <FacetGroup
-              label="Size"
+              label={t('size')}
               values={facets.sizes}
               selected={filters.sizes}
               onToggle={(value) => update({ sizes: toggleValue(filters.sizes, value) })}
@@ -155,6 +157,7 @@ function PriceRange({
   maxPrice: number | null
   onApply: (minPrice: number | null, maxPrice: number | null) => void
 }) {
+  const t = useTranslations('Catalog')
   const [min, setMin] = useState(minPrice?.toString() ?? '')
   const [max, setMax] = useState(maxPrice?.toString() ?? '')
 
@@ -186,7 +189,7 @@ function PriceRange({
       }}
     >
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="catalog-min">Min price, €</Label>
+        <Label htmlFor="catalog-min">{t('minPrice')}</Label>
         <Input
           id="catalog-min"
           type="number"
@@ -203,13 +206,13 @@ function PriceRange({
         –
       </span>
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="catalog-max">Max price, €</Label>
+        <Label htmlFor="catalog-max">{t('maxPrice')}</Label>
         <Input
           id="catalog-max"
           type="number"
           inputMode="decimal"
           min={0}
-          placeholder="Any"
+          placeholder={t('any')}
           className="w-24"
           value={max}
           onChange={(e) => setMax(e.target.value)}
@@ -217,7 +220,7 @@ function PriceRange({
         />
       </div>
       <Button type="submit" variant="outline">
-        Apply
+        {t('apply')}
       </Button>
     </form>
   )
@@ -225,6 +228,7 @@ function PriceRange({
 
 /** Keyed on the query string, so "Show more" starts over whenever the filters change. */
 function Results({ products, total }: { products: CatalogItem[]; total: number }) {
+  const t = useTranslations('Catalog')
   const [limit, setLimit] = useState(PAGE_SIZE)
   const shown = products.slice(0, limit)
 
@@ -232,13 +236,13 @@ function Results({ products, total }: { products: CatalogItem[]; total: number }
     <>
       <p className="text-sm text-muted-foreground" aria-live="polite">
         {products.length === total
-          ? `${total} ${total === 1 ? 'product' : 'products'}`
-          : `${products.length} of ${total} products match`}
+          ? t('count', { count: total })
+          : t('countMatching', { shown: products.length, total })}
       </p>
 
       {products.length === 0 ? (
         <p className="py-12 text-center text-muted-foreground">
-          No products match these filters.
+          {t('noMatches')}
         </p>
       ) : (
         <ProductGrid products={shown} />
@@ -247,7 +251,7 @@ function Results({ products, total }: { products: CatalogItem[]; total: number }
       {products.length > limit && (
         <div className="flex justify-center">
           <Button variant="outline" size="lg" onClick={() => setLimit(limit + PAGE_SIZE)}>
-            Show more ({products.length - limit} left)
+            {t('showMore', { left: products.length - limit })}
           </Button>
         </div>
       )}

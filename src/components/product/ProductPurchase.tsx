@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { ShoppingCart } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -20,6 +21,8 @@ type Props = {
  * the cart until a size is chosen — checkout would refuse the line anyway.
  */
 export function ProductPurchase({ product, variants }: Props) {
+  const t = useTranslations('ProductPurchase')
+  const tStock = useTranslations('Stock')
   const addItem = useCartStore((state) => state.addItem)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -38,8 +41,8 @@ export function ProductPurchase({ product, variants }: Props) {
       quantity: 1,
       ...(selected ? { variantId: selected.id, size: selected.size } : {}),
     })
-    toast.success('Added to cart', {
-      description: selected ? `${product.title} · size ${selected.size}` : product.title,
+    toast.success(t('added'), {
+      description: selected ? t('addedWithSize', { title: product.title, size: selected.size }) : product.title,
     })
   }
 
@@ -48,7 +51,7 @@ export function ProductPurchase({ product, variants }: Props) {
       {hasSizes && (
         <fieldset>
           <legend className="mb-2 text-sm font-medium">
-            Size{selected && <span className="text-muted-foreground">: {selected.size}</span>}
+            {t('size')}{selected && <span className="text-muted-foreground">: {selected.size}</span>}
           </legend>
           <div className="flex flex-wrap gap-2">
             {variants.map((variant) => {
@@ -74,14 +77,17 @@ export function ProductPurchase({ product, variants }: Props) {
                     className="sr-only"
                   />
                   {variant.size}
-                  {out && <span className="sr-only"> (sold out)</span>}
+                  {out && <span className="sr-only"> ({t('sizeSoldOut')})</span>}
                 </label>
               )
             })}
           </div>
           {selected && stockLevel(selected.inventory_count) === 'low' && (
             <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">
-              {stockLabel(selected.inventory_count)} in {selected.size}
+              {t('lowInSize', {
+                stock: stockLabel(selected.inventory_count, (k, v) => tStock(k, v)) ?? '',
+                size: selected.size,
+              })}
             </p>
           )}
         </fieldset>
@@ -89,7 +95,7 @@ export function ProductPurchase({ product, variants }: Props) {
 
       <Button size="lg" className="w-full sm:w-auto" onClick={handleAdd} disabled={!canAdd}>
         <ShoppingCart className="mr-2 h-5 w-5" aria-hidden="true" />
-        {soldOut ? 'Out of stock' : hasSizes && !selected ? 'Choose a size' : 'Add to Cart'}
+        {soldOut ? t('outOfStock') : hasSizes && !selected ? t('chooseSize') : t('addToCart')}
       </Button>
     </div>
   )

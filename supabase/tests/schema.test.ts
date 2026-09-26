@@ -291,3 +291,125 @@ describe('reviews', () => {
     ).rejects.toThrow(/row-level security|permission denied/)
   })
 })
+
+describe('catalogue translations', () => {
+  it('seeds Spanish and Russian for every demo product and category', async () => {
+    const { products, translated } = await one<{ products: number; translated: number }>(
+      `select (select count(*)::int from products) as products,
+              (select count(distinct product_id)::int from product_translations where locale in ('es', 'ru')) as translated`,
+    )
+    expect(translated).toBe(products)
+    const { n } = await one<{ n: number }>(`select count(*)::int as n from category_translations`)
+    expect(n).toBe(6)
+  })
+
+  it('lets anyone read them, like the catalogue', async () => {
+    const rows = await as(db, { role: 'anon' }, async (tx) =>
+      (await tx.query<{ title: string }>(`select title from product_translations where locale = 'ru' limit 1`)).rows,
+    )
+    expect(rows).toHaveLength(1)
+  })
+
+  it('lets only admins change them', async () => {
+    const product = await productId('mech-keyboard')
+    const shopper = await createUser(db, 'translator@example.test')
+    await expect(
+      as(db, { role: 'authenticated', userId: shopper }, (tx) =>
+        tx.query(`update product_translations set title = 'hacked' where product_id = $1 returning 1`, [product]),
+      ).then((r) => r.rows.length),
+    ).resolves.toBe(0)
+    await expect(
+      as(db, { role: 'anon' }, (tx) =>
+        tx.query(`insert into product_translations (product_id, locale, title) values ($1, 'es', 'x')`, [product]),
+      ),
+    ).rejects.toThrow(/row-level security|duplicate key/)
+
+    const admin = await createUser(db, 'admin-translator@example.test')
+    await db.query(`update profiles set role = 'admin' where id = $1`, [admin])
+    const updated = await as(db, { role: 'authenticated', userId: admin }, (tx) =>
+      tx.query(`update product_translations set title = 'Teclado' where product_id = $1 and locale = 'es' returning 1`, [
+        product,
+      ]),
+    )
+    expect(updated.rows).toHaveLength(1)
+  })
+
+  it('accepts only the translated languages', async () => {
+    await expect(
+      db.query(`insert into product_translations (product_id, locale, title) values ($1, 'en', 'x')`, [
+        await productId('smart-speaker'),
+      ]),
+    ).rejects.toThrow('check constraint')
+  })
+})
+
+describe('saving translations from the admin forms', () => {
+  let admin: string
+  let category: string
+
+  beforeAll(async () => {
+    admin = await createUser(db, 'admin-forms@example.test')
+    await db.query(`update profiles set role = 'admin' where id = $1`, [admin])
+    category = (await one<{ id: string }>(`select id from categories where slug = 'electronics'`)).id
+  })
+
+  const saveProduct = (id: string | null, translations: unknown, title = 'Desk Lamp') =>
+    as(db, { role: 'authenticated', userId: admin }, async (tx) =>
+      (
+        await tx.query<{ id: string }>(`select save_product($1, $2::jsonb, null, $3::jsonb) as id`, [
+          id,
+          JSON.stringify({ title, slug: `lamp-${Math.random().toString(36).slice(2, 8)}`, description: 'A lamp', price: 30, inventory_count: 4, category_id: category, image_urls: [] }),
+          translations === null ? null : JSON.stringify(translations),
+        ])
+      ).rows[0].id,
+    )
+  const translationsOf = async (productId: string) =>
+    (await db.query<{ locale: string; title: string; description: string | null }>(
+      `select locale, title, description from product_translations where product_id = $1 order by locale`,
+      [productId],
+    )).rows
+
+  it('saves a product together with its translations', async () => {
+    const id = await saveProduct(null, { es: { title: 'Lámpara', description: 'Una lámpara' }, ru: { title: '', description: '' } })
+    expect(await translationsOf(id)).toEqual([{ locale: 'es', title: 'Lámpara', description: 'Una lámpara' }])
+  })
+
+  it('removes a translation whose name is cleared, and leaves unsent languages alone', async () => {
+    const id = await saveProduct(null, { es: { title: 'Lámpara', description: '' }, ru: { title: 'Лампа', description: '' } })
+    await saveProduct(id, { es: { title: '', description: '' } })
+    expect(await translationsOf(id)).toEqual([{ locale: 'ru', title: 'Лампа', description: null }])
+  })
+
+  it('keeps translated specifications the form does not edit', async () => {
+    const product = await productId('wireless-headphones')
+    await saveProduct(product, { es: { title: 'Auriculares', description: 'Nuevos' } }, 'Wireless Noise-Canceling Headphones')
+    const { attributes } = await one<{ attributes: Record<string, string> }>(
+      `select attributes from product_translations where product_id = $1 and locale = 'es'`,
+      [product],
+    )
+    expect(attributes.color).toBe('Negro')
+  })
+
+  it('is all or nothing: a bad translation leaves no product behind', async () => {
+    const before = (await one<{ n: number }>(`select count(*)::int as n from products`)).n
+    await expect(saveProduct(null, { es: { title: 'x'.repeat(201), description: '' } })).rejects.toThrow('check constraint')
+    expect((await one<{ n: number }>(`select count(*)::int as n from products`)).n).toBe(before)
+  })
+
+  it('saves a category and its translations in one call, for admins only', async () => {
+    const fields = JSON.stringify({ name: 'Garden', slug: 'garden', description: 'Outdoor things', image_url: '' })
+    const translations = JSON.stringify({ es: { title: 'Jardín', description: '' }, ru: { title: 'Сад', description: 'Для дачи' } })
+    const id = await as(db, { role: 'authenticated', userId: admin }, async (tx) =>
+      (await tx.query<{ id: string }>(`select save_category(null, $1::jsonb, $2::jsonb) as id`, [fields, translations])).rows[0].id,
+    )
+    const rows = (await db.query(`select locale, name from category_translations where category_id = $1 order by locale`, [id])).rows
+    expect(rows).toEqual([{ locale: 'es', name: 'Jardín' }, { locale: 'ru', name: 'Сад' }])
+
+    const shopper = await createUser(db, 'not-admin@example.test')
+    await expect(
+      as(db, { role: 'authenticated', userId: shopper }, (tx) =>
+        tx.query(`select save_category(null, $1::jsonb, null)`, [fields.replace('garden', 'garden-2')]),
+      ),
+    ).rejects.toThrow('forbidden')
+  })
+})

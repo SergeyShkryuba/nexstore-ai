@@ -1,22 +1,22 @@
 import Link from 'next/link'
-import { buttonVariants } from '@/components/ui/button'
+import './globals.css'
 
-export default function NotFound() {
+/**
+ * For URLs the locale middleware never sees (it skips paths that look like
+ * files). Every other unknown page gets the localised
+ * `app/[locale]/not-found.tsx` with the full header and footer.
+ */
+export default function GlobalNotFound() {
   return (
-    <div className="container mx-auto flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4 text-center">
-      <p className="font-mono text-sm text-muted-foreground">404</p>
-      <h1 className="text-3xl font-bold">We couldn&apos;t find that page</h1>
-      <p className="max-w-md text-muted-foreground">
-        The product or category you followed may have been removed or renamed.
-      </p>
-      <div className="flex gap-3">
-        <Link href="/" className={buttonVariants()}>
-          Go home
+    <html lang="en">
+      <body className="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center font-sans antialiased">
+        <h1 className="text-3xl font-bold">Page not found</h1>
+        {/* Plain next/link: outside [locale] there is no language to add; the
+            proxy sends "/" to the visitor's language. */}
+        <Link href="/" className="underline underline-offset-4">
+          Back to NexStore AI
         </Link>
-        <Link href="/categories/all" className={buttonVariants({ variant: 'outline' })}>
-          Browse all products
-        </Link>
-      </div>
-    </div>
+      </body>
+    </html>
   )
 }
