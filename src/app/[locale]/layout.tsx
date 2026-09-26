@@ -7,6 +7,7 @@ import "@fontsource-variable/jetbrains-mono";
 import "../globals.css";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { ChatWidget } from "@/components/chat/ChatWidget";
 import { loadNavCategories } from "@/lib/nav-categories";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { Toaster } from 'sonner';
@@ -92,6 +93,8 @@ export default async function LocaleLayout({
             <Header categories={categories} />
             <main id="main-content" className="flex-1">{children}</main>
             <Footer categories={categories} />
+            {/* The assistant needs a model to talk to; without the key there is no widget. */}
+            {process.env.ANTHROPIC_API_KEY && <ChatWidget />}
             <Toaster />
           </ThemeProvider>
         </NextIntlClientProvider>

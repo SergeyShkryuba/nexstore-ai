@@ -2,7 +2,7 @@
 
 import { Link } from '@/i18n/navigation'
 import { usePathname } from '@/i18n/navigation'
-import { LayoutDashboard, Package, ShoppingCart, Tags } from 'lucide-react'
+import { LayoutDashboard, LifeBuoy, Package, ShoppingCart, Tags } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const LINKS = [
@@ -10,6 +10,7 @@ const LINKS = [
   { href: '/admin/products', label: 'Products', icon: Package },
   { href: '/admin/categories', label: 'Categories', icon: Tags },
   { href: '/admin/orders', label: 'Orders', icon: ShoppingCart },
+  { href: '/admin/support', label: 'Support', icon: LifeBuoy },
 ]
 
 /** Vertical in the sidebar, a scrollable row on small screens. */

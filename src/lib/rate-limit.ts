@@ -13,6 +13,12 @@ export const LIMITS = {
   search: { limit: 30, windowSeconds: 60 },
   /** Each cancel can call Stripe; a shopper needs one per abandoned checkout. */
   cancel: { limit: 20, windowSeconds: 10 * 60 },
+  /** Each chat message is a paid model call, plus a search when it asks for one. */
+  chat: { limit: 20, windowSeconds: 10 * 60 },
+  /** And a daily ceiling, so a patient script cannot run up the bill either. */
+  chatDaily: { limit: 150, windowSeconds: 24 * 60 * 60 },
+  /** Each "talk to a person" request lands in the admin's inbox. */
+  support: { limit: 5, windowSeconds: 60 * 60 },
 } as const
 
 export type LimitScope = keyof typeof LIMITS

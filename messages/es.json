@@ -458,5 +458,50 @@
         }
       ]
     }
+  },
+  "Chat": {
+    "open": "Chatear con el asistente de la tienda",
+    "close": "Cerrar el chat",
+    "title": "Asistente de la tienda",
+    "subtitle": "IA · responde en segundos",
+    "greeting": "¡Hola! Puedo ayudarte a encontrar productos, consultar tus pedidos o resolver dudas sobre envíos y devoluciones.",
+    "suggestion1": "Auriculares por menos de 100 €",
+    "suggestion2": "¿Dónde está mi pedido?",
+    "suggestion3": "¿Cómo funcionan las devoluciones?",
+    "placeholder": "Pregunta por productos, pedidos, envíos…",
+    "messageLabel": "Tu mensaje",
+    "send": "Enviar",
+    "newChat": "Nuevo chat",
+    "typing": "El asistente está escribiendo",
+    "disclaimer": "Asistente de IA: puede equivocarse. Los precios y el stock vienen del catálogo.",
+    "soldOut": "Agotado",
+    "busy": "El asistente está ocupado ahora mismo. Inténtalo de nuevo en un momento.",
+    "unavailable": "El asistente no está disponible ahora mismo. Inténtalo más tarde.",
+    "network": "No se pudo contactar con el asistente. Revisa tu conexión e inténtalo de nuevo.",
+    "refused": "Lo siento, no puedo ayudarte con eso. ¿Te ayudo a encontrar algo en la tienda?",
+    "stepLimit": "Lo siento, me ha llevado demasiados pasos. ¿Puedes preguntarlo de otra forma?",
+    "orders": {
+      "signIn": "Inicia sesión para ver tus pedidos.",
+      "none": "No se han encontrado pedidos.",
+      "order": "Pedido #{id}",
+      "items": "{count, plural, one {# artículo} other {# artículos}}"
+    },
+    "handoff": {
+      "title": "Contactar con el equipo",
+      "intro": "Déjanos tu email y te responderemos allí.",
+      "email": "Email",
+      "message": "Mensaje",
+      "send": "Enviar",
+      "sending": "Enviando…",
+      "sent": "¡Gracias! Tu mensaje ha llegado al equipo; te responderán por email.",
+      "badEmail": "Introduce un email válido.",
+      "failed": "No se pudo enviar tu mensaje. Inténtalo de nuevo."
+    },
+    "api": {
+      "unavailable": "El asistente no está disponible ahora mismo.",
+      "tooMany": "Demasiados mensajes. Espera unos minutos.",
+      "invalid": "No se pudo enviar el mensaje.",
+      "tooLong": "El mensaje es demasiado largo. Acórtalo, por favor."
+    }
   }
 }

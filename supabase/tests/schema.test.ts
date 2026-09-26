@@ -413,3 +413,43 @@ describe('saving translations from the admin forms', () => {
     ).rejects.toThrow('forbidden')
   })
 })
+
+describe('support requests', () => {
+  const file = (email: string) =>
+    db.query(`insert into support_requests (email, message, transcript) values ($1, 'help', '[]'::jsonb)`, [email])
+
+  it('cannot be written or read from the browser, signed in or not', async () => {
+    const shopper = await createUser(db, 'support-shopper@example.test')
+    await file('private@example.test')
+
+    for (const caller of [{ role: 'anon' as const }, { role: 'authenticated' as const, userId: shopper }]) {
+      await expect(
+        as(db, caller, (tx) => tx.query(`insert into support_requests (email, message) values ('x@y.z', 'spam')`)),
+      ).rejects.toThrow('row-level security')
+      const seen = await as(db, caller, async (tx) =>
+        (await tx.query<{ n: number }>(`select count(*)::int as n from support_requests`)).rows[0].n,
+      )
+      expect(seen).toBe(0)
+    }
+  })
+
+  it('lets admins read and resolve them', async () => {
+    const admin = await createUser(db, 'support-admin@example.test')
+    await db.query(`update profiles set role = 'admin' where id = $1`, [admin])
+    await file('resolve-me@example.test')
+
+    const resolved = await as(db, { role: 'authenticated', userId: admin }, (tx) =>
+      tx.query(`update support_requests set status = 'resolved' where email = 'resolve-me@example.test' returning 1`),
+    )
+    expect(resolved.rows).toHaveLength(1)
+  })
+
+  it('bounds what a row can hold', async () => {
+    await expect(
+      db.query(`insert into support_requests (email, message) values ('a@b.c', $1)`, ['x'.repeat(2001)]),
+    ).rejects.toThrow('check constraint')
+    await expect(
+      db.query(`insert into support_requests (email, message, transcript) values ('a@b.c', 'hi', '{}'::jsonb)`),
+    ).rejects.toThrow('check constraint')
+  })
+})
