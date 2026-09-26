@@ -36,8 +36,8 @@ export default async function AdminSupportPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Support</h1>
         <p className="text-muted-foreground mt-2">
-          Requests shoppers sent from the shop assistant&apos;s &ldquo;talk to a person&rdquo; form. Open first, newest
-          first. Reply by email.
+          Messages from the contact page and the shop assistant&apos;s &ldquo;talk to a person&rdquo; form. Open first,
+          newest first. Reply by email.
         </p>
       </div>
 
@@ -62,7 +62,8 @@ export default async function AdminSupportPage() {
                   </a>
                   <p className="text-xs text-muted-foreground">
                     {dateFormatter.format(new Date(request.created_at))} ·{' '}
-                    {isLocale(request.locale) ? LOCALE_NAMES[request.locale] : request.locale}
+                    {isLocale(request.locale) ? LOCALE_NAMES[request.locale] : request.locale} ·{' '}
+                    {request.transcript.length > 0 ? 'from the shop assistant' : 'from the contact page'}
                   </p>
                 </div>
                 <SupportStatusButton requestId={request.id} status={request.status} />

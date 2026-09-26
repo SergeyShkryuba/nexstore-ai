@@ -46,6 +46,9 @@ TypeScript, Tailwind CSS v4 and Supabase, with Stripe Checkout for payments.
   answers from the shipping and returns policy, and hands over to a person
   through a form that lands in the admin panel. Replies stream in; products and
   orders show as cards with links. Hidden unless `ANTHROPIC_API_KEY` is set.
+- **Contact page** — a form in three languages that files the same support
+  requests as the assistant's "talk to a person", so shoppers can reach the
+  team with or without the assistant.
 - **Owner alerts** — every new order (with anything it left running low) and
   every "talk to a person" request reaches the owner on Telegram and/or
   WhatsApp, sent after the response so a slow messenger never holds up Stripe

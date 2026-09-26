@@ -37,6 +37,7 @@ export async function Footer({ categories }: { categories: NavCategory[] }) {
     { href: '/cart', label: t('cart') },
   ]
   const helpLinks = [
+    { href: '/contact', label: t('contact') },
     { href: '/help/shipping-returns', label: t('shippingReturns') },
     { href: '/privacy', label: t('privacy') },
     { href: '/terms', label: t('terms') },
