@@ -227,6 +227,32 @@ export async function updateOrderStatus(orderId: string, status: string): Promis
   return { success: true }
 }
 
+// ---------------------------- Support requests ------------------------------
+
+export async function updateSupportStatus(requestId: string, status: string): Promise<ActionResult> {
+  const auth = await requireAdmin()
+  if ('error' in auth) return auth
+  const { supabase } = auth
+
+  if (status !== 'open' && status !== 'resolved') return { error: 'Unknown status' }
+
+  const { data: updated, error } = await supabase
+    .from('support_requests')
+    .update({ status })
+    .eq('id', requestId)
+    .select('id')
+    .maybeSingle()
+
+  if (error) {
+    console.error('Error updating support request:', error)
+    return { error: 'Failed to update the request' }
+  }
+  if (!updated) return { error: 'Request not found' }
+
+  revalidatePath('/[locale]/admin/support', 'page')
+  return { success: true }
+}
+
 // ------------------------------- Categories ---------------------------------
 
 /**

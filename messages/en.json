@@ -458,5 +458,50 @@
         }
       ]
     }
+  },
+  "Chat": {
+    "open": "Chat with the shop assistant",
+    "close": "Close chat",
+    "title": "Shop assistant",
+    "subtitle": "AI · replies in seconds",
+    "greeting": "Hi! I can help you find products, check your orders, or answer questions about delivery and returns.",
+    "suggestion1": "Headphones under €100",
+    "suggestion2": "Where is my order?",
+    "suggestion3": "How do returns work?",
+    "placeholder": "Ask about products, orders, delivery…",
+    "messageLabel": "Your message",
+    "send": "Send",
+    "newChat": "New chat",
+    "typing": "The assistant is typing",
+    "disclaimer": "AI assistant: it can make mistakes. Prices and stock come from the catalogue.",
+    "soldOut": "Sold out",
+    "busy": "The assistant is busy right now. Please try again in a moment.",
+    "unavailable": "The assistant is unavailable right now. Please try again later.",
+    "network": "Could not reach the assistant. Check your connection and try again.",
+    "refused": "Sorry, I can't help with that. Is there something in the shop I can help you find?",
+    "stepLimit": "Sorry, that took me too many steps. Could you ask in a different way?",
+    "orders": {
+      "signIn": "Sign in to see your orders.",
+      "none": "No orders found.",
+      "order": "Order #{id}",
+      "items": "{count, plural, one {# item} other {# items}}"
+    },
+    "handoff": {
+      "title": "Contact the team",
+      "intro": "Leave your email and we will reply there.",
+      "email": "Email",
+      "message": "Message",
+      "send": "Send",
+      "sending": "Sending…",
+      "sent": "Thanks! Your message has reached the team; they will reply by email.",
+      "badEmail": "Please enter a valid email address.",
+      "failed": "Could not send your message. Please try again."
+    },
+    "api": {
+      "unavailable": "The assistant is unavailable right now.",
+      "tooMany": "Too many messages. Please wait a few minutes.",
+      "invalid": "The message could not be sent.",
+      "tooLong": "That message is too long. Please shorten it."
+    }
   }
 }

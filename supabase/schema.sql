@@ -1117,3 +1117,35 @@ $$;
 
 revoke all on function public.save_category(uuid, jsonb, jsonb) from public, anon;
 grant execute on function public.save_category(uuid, jsonb, jsonb) to authenticated, service_role;
+
+-- ======================== Support requests =================================
+-- "Talk to a person" from the shop assistant. The shopper fills in the form the
+-- assistant opens; /api/support writes the row with the service role, so there
+-- is no insert policy and a browser cannot write here directly. Admins read
+-- them in the admin panel and mark them resolved.
+
+create table if not exists support_requests (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users on delete set null,
+  email text not null check (char_length(email) between 3 and 254),
+  message text not null check (char_length(message) between 1 and 2000),
+  -- What the assistant understood the shopper needs, for a quick read.
+  summary text check (char_length(summary) <= 500),
+  -- The chat so far: [{ "role": "user" | "assistant", "content": "..." }].
+  transcript jsonb not null default '[]'::jsonb
+    check (jsonb_typeof(transcript) = 'array' and jsonb_array_length(transcript) <= 40),
+  locale text not null default 'en' check (locale in ('en', 'es', 'ru')),
+  status text not null default 'open' check (status in ('open', 'resolved')),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_support_requests_created on support_requests (created_at desc);
+
+alter table support_requests enable row level security;
+
+drop policy if exists "Admins read support requests" on support_requests;
+create policy "Admins read support requests"
+  on support_requests for select using (public.is_admin());
+drop policy if exists "Admins update support requests" on support_requests;
+create policy "Admins update support requests"
+  on support_requests for update using (public.is_admin()) with check (public.is_admin());

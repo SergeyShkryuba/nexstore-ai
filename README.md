@@ -40,6 +40,12 @@ TypeScript, Tailwind CSS v4 and Supabase, with Stripe Checkout for payments.
 - **Three languages** — English, Spanish and Russian: the interface, the
   catalogue (titles, descriptions, specifications, categories), Stripe's
   payment page, prices and dates, with a language switcher in the header.
+- **Shop assistant** — a chat widget on Claude (Haiku 4.5) with tools: it
+  searches the catalogue (in English, so the semantic half works for Russian
+  and Spanish questions too), looks up products and the shopper's own orders,
+  answers from the shipping and returns policy, and hands over to a person
+  through a form that lands in the admin panel. Replies stream in; products and
+  orders show as cards with links. Hidden unless `ANTHROPIC_API_KEY` is set.
 - **Admin panel** — dashboard and product creation, gated on `profiles.role`
   both in the UI and in the RLS policies.
 - **Abuse limits** — checkout and search are rate-limited per visitor, one
@@ -205,6 +211,15 @@ events — the last three are what put reserved stock back on sale:
 - `checkout.session.async_payment_failed`
 - `checkout.session.expired`
 
+### Shop assistant (optional)
+
+Set `ANTHROPIC_API_KEY` (console.anthropic.com → API keys) and redeploy: the
+widget is built into the pages, and without the key it is not rendered and
+`/api/chat` answers 503. Run the "Support requests" block of `schema.sql`
+before deploying, or the admin panel's Support page cannot load. Each message
+is rate-limited per visitor (20 per 10 minutes, 150 per day); a spend limit in
+the Anthropic console is still worth setting.
+
 ## Scripts
 
 | Command | What it does |
@@ -242,6 +257,14 @@ events — the last three are what put reserved stock back on sale:
   read, reservation or Stripe call, and a fourth open checkout is refused.
 - `src/app/api/checkout/cancel/route.test.ts` — Stripe's back link releases
   units only after Stripe has closed the session, never for a paid one.
+- `src/lib/chat/*.test.ts` — the assistant's tool loop against a scripted
+  model (all of a turn's tool results in one message, a failing tool, a call
+  cut off at `max_tokens`, the step cap), its tools (budget, sizes in stock,
+  only the shopper's own orders even for an admin), the request limits and
+  the streamed event format.
+- `src/app/api/chat/route.test.ts` / `src/app/api/support/route.test.ts` —
+  both rate limits counted, errors in the shopper's language, and no model or
+  database error text passed to the browser.
 - `supabase/tests/schema.test.ts` — **the SQL itself, on a real Postgres**:
   PGlite (Postgres in WebAssembly, in-process, no Docker) loads the whole
   `schema.sql` twice and `seed.sql`, with Supabase's roles, default grants and
@@ -261,6 +284,9 @@ Listed rather than hidden:
 - Supabase's own emails (confirmation, password reset) are in English.
 - A cart line keeps the title it was added with; switching language does not
   rename lines already in the cart (checkout and Stripe use the new language).
+- The shop assistant sees the last 12 messages of a chat and forgets product
+  details between turns beyond the names of the cards it showed; the chat
+  lives in the tab (`sessionStorage`).
 - Semantic search is English-only: gte-small is an English model. Russian
   (Cyrillic) queries skip it and are ranked by keywords against the Russian
   titles, and the results say "keyword ranking only"; Spanish queries try it,
