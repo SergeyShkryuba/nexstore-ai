@@ -516,7 +516,7 @@
       "shipping": "🚚 Delivery & returns",
       "human": "🙋 Contact us"
     },
-    "greeting": "Hi! I'm the NexStore assistant. Choose an option below, or just type what you're looking for, for example “headphones under 100”.",
+    "greeting": "Hi! I'm the NexStore assistant. Choose an option below, or just type what you're looking for, for example “smart home under 60”.",
     "askSearch": "Type what you're looking for: a product name, a type or a budget, for example “warm sweater” or “smart home under 60”.",
     "found": "Here's what I found:",
     "foundBudget": "Here's what I found for up to {amount}:",
@@ -527,7 +527,7 @@
     "catalogIntro": "Choose a category:",
     "categoryEmpty": "Nothing in this category right now.",
     "more": "Anything else? Choose an option or type what you're looking for.",
-    "placeholder": "Product, type or budget, e.g. “headphones under 100”",
+    "placeholder": "Product, type or budget, e.g. “smart home under 60”",
     "subtitle": "Answers instantly",
     "disclaimer": "Shop assistant: searches the catalogue, shows your orders and connects you with the team.",
     "telegram": {
