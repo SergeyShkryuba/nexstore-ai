@@ -206,3 +206,26 @@ describe('budgets and filler words in Spanish and Russian', () => {
     expect(tokenize('мне нужно что-нибудь тёплое')).toEqual(['тёплое'])
   })
 })
+
+describe('the budget phrase is a filter, not search words', () => {
+  const catalogue = [
+    { id: 'tee', title: 'Cotton T-Shirt', slug: 'tee', description: '100% organic cotton.', price: 25, category_id: null, image_urls: null },
+    { id: 'buds', title: 'Bluetooth Earbuds', slug: 'buds', description: 'Wireless earbuds.', price: 79, category_id: null, image_urls: null },
+    { id: 'tee-ru', title: 'Хлопковая футболка', slug: 'tee-ru', description: 'Из 100% хлопка.', price: 25, category_id: null, image_urls: null },
+    { id: 'speaker-ru', title: 'Умная колонка', slug: 'speaker-ru', description: 'Для управления умным домом.', price: 49, category_id: null, image_urls: null },
+    { id: 'buds-ru', title: 'Bluetooth-наушники', slug: 'buds-ru', description: 'Беспроводные наушники.', price: 79, category_id: null, image_urls: null },
+  ]
+  const ids = (query: string) => rankProducts(query, catalogue).map((r) => r.product.id)
+
+  it('does not match "100" in a description', () => {
+    expect(ids('earbuds under 100')).toEqual(['buds'])
+  })
+
+  it('does not match "до" as the start of a Russian word', () => {
+    expect(ids('наушники до 100')).toEqual(['buds-ru'])
+  })
+
+  it('a budget alone is not a query', () => {
+    expect(ids('under 100')).toEqual([])
+  })
+})

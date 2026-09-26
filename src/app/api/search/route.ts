@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { createClient } from '@/utils/supabase/server'
 import { rankProducts, extractMaxPrice, removeBudget, type SearchableProduct } from '@/lib/search'
 import { fuseResults, type SemanticMatch } from '@/lib/hybrid'
-import { embedTexts, toPgVector } from '@/lib/embeddings'
+import { embedTexts, isEmbeddableQuery, toPgVector } from '@/lib/embeddings'
 import { clientIp, hitLimit } from '@/lib/rate-limit'
 import { createServiceClient } from '@/utils/supabase/service'
 import { LOCALES } from '@/i18n/routing'
@@ -55,7 +55,7 @@ async function semanticMatches(
   query: string,
 ): Promise<SemanticMatch[] | null> {
   const text = removeBudget(query)
-  if (text.length < 2) return null
+  if (text.length < 2 || !isEmbeddableQuery(text)) return null
 
   try {
     const [embedding] = await embedTexts([text], { timeoutMs: EMBED_TIMEOUT_MS })

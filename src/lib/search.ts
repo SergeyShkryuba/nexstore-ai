@@ -140,11 +140,12 @@ export function rankProducts<T extends SearchableProduct>(
 ): ScoredProduct<T>[] {
   const { categorySlugToId = {}, minScore = 1, limit = 24 } = options
 
-  const normalizedQuery = query.trim().toLowerCase()
+  // The budget is a price filter, not words to look for: left in, "до 100"
+  // matched "100% cotton", and "до" the start of "домом".
+  const maxPrice = extractMaxPrice(query)
+  const normalizedQuery = removeBudget(query).trim().toLowerCase()
   const terms = tokenize(normalizedQuery)
   if (terms.length === 0) return []
-
-  const maxPrice = extractMaxPrice(query)
 
   // Categories whose slug words appear in the query, e.g. "smart home speaker".
   const boostedCategoryIds = new Set<string>()

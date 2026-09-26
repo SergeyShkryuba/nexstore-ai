@@ -261,8 +261,10 @@ Listed rather than hidden:
 - Supabase's own emails (confirmation, password reset) are in English.
 - A cart line keeps the title it was added with; switching language does not
   rename lines already in the cart (checkout and Stripe use the new language).
-- Semantic search is English-only: gte-small is an English model, so a
-  Russian or Spanish query falls back to keyword matching in practice.
+- Semantic search is English-only: gte-small is an English model. Russian
+  (Cyrillic) queries skip it and are ranked by keywords against the Russian
+  titles, and the results say "keyword ranking only"; Spanish queries try it,
+  and mostly land on keywords too.
 - The similarity thresholds were calibrated on a 10-product catalogue; a much
   larger or different catalogue should be re-checked.
 - Units in an open checkout are unavailable to others for up to ~36 minutes

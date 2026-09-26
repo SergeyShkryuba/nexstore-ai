@@ -3,6 +3,7 @@ import {
   EMBEDDING_DIMENSIONS,
   contentHash,
   embedTexts,
+  isEmbeddableQuery,
   productEmbeddingText,
   toPgVector,
 } from './embeddings'
@@ -91,5 +92,17 @@ describe('embedTexts', () => {
 
   it('refuses to run without configuration', async () => {
     await expect(embedTexts(['x'], { supabaseUrl: '', apiKey: '' })).rejects.toThrow('not configured')
+  })
+})
+
+describe('isEmbeddableQuery', () => {
+  it('embeds English and other Latin-script queries', () => {
+    expect(isEmbeddableQuery('film my surfing trip')).toBe(true)
+    expect(isEmbeddableQuery('hogar inteligente')).toBe(true)
+  })
+
+  it('leaves Cyrillic to keyword ranking: the English model reads it as noise', () => {
+    expect(isEmbeddableQuery('наушники')).toBe(false)
+    expect(isEmbeddableQuery('умная колонка Wi-Fi')).toBe(false)
   })
 })
