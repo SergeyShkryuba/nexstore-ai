@@ -94,6 +94,19 @@ export function shippingLines(stored: unknown): { name: string | null; phone: st
   return { name, phone, lines }
 }
 
+/** Every status `orders.status` can hold (its check constraint in schema.sql). */
+export const ORDER_STATUSES = ['pending', 'paid', 'shipped', 'delivered', 'cancelled', 'refunded'] as const
+export type OrderStatus = (typeof ORDER_STATUSES)[number]
+
+/**
+ * The `OrderStatus` message key for a stored status. The database only allows
+ * the six above; anything else (a hand-edited row) reads as pending rather
+ * than breaking the page.
+ */
+export function orderStatusKey(status: string): OrderStatus {
+  return (ORDER_STATUSES as readonly string[]).includes(status) ? (status as OrderStatus) : 'pending'
+}
+
 export type ProgressStep = { key: 'paid' | 'shipped' | 'delivered'; label: string; done: boolean }
 
 const STEPS: { key: ProgressStep['key']; label: string }[] = [

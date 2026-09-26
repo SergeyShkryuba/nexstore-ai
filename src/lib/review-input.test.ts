@@ -28,19 +28,16 @@ describe('parseReviewInput', () => {
     const result = parseReviewInput(
       form({ product_id: PRODUCT, rating: '5', comment: 'x'.repeat(MAX_REVIEW_LENGTH + 1) }),
     )
-    expect(result).toEqual({ ok: false, error: `Keep the review under ${MAX_REVIEW_LENGTH} characters.` })
+    expect(result).toEqual({ ok: false, error: 'tooLong' })
   })
 
   it('refuses ratings outside 1–5 and non-numbers', () => {
     for (const rating of ['0', '6', '2.5', 'five']) {
-      expect(parseReviewInput(form({ product_id: PRODUCT, rating })).ok).toBe(false)
+      expect(parseReviewInput(form({ product_id: PRODUCT, rating }))).toEqual({ ok: false, error: 'rating' })
     }
   })
 
   it('refuses a product id that is not an id', () => {
-    expect(parseReviewInput(form({ product_id: 'abc', rating: '5' }))).toEqual({
-      ok: false,
-      error: 'Invalid product.',
-    })
+    expect(parseReviewInput(form({ product_id: 'abc', rating: '5' }))).toEqual({ ok: false, error: 'product' })
   })
 })

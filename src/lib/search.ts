@@ -34,6 +34,9 @@ const STOP_WORDS = new Set([
   'a', 'an', 'and', 'are', 'as', 'at', 'be', 'but', 'by', 'для', 'find', 'for',
   'from', 'get', 'i', 'in', 'is', 'it', 'me', 'my', 'need', 'of', 'on', 'or',
   'some', 'that', 'the', 'this', 'to', 'want', 'with', 'looking',
+  // Spanish and Russian, for the /es and /ru storefronts.
+  'algo', 'busco', 'con', 'de', 'del', 'el', 'en', 'la', 'las', 'los', 'mi', 'para', 'por', 'que', 'quiero', 'un', 'una', 'y',
+  'в', 'и', 'мне', 'мой', 'моя', 'на', 'нужен', 'нужна', 'нужно', 'что', 'чтобы', 'хочу', 'нибудь', 'какой', 'какую',
 ])
 
 /**
@@ -65,12 +68,14 @@ export function tokenize(input: string): string[] {
 }
 
 const BUDGET_PATTERNS = [
-  /(?:under|below|less than|cheaper than|max|up to|до)\s*[$€]?\s*(\d+(?:[.,]\d+)?)\s*(?:€|eur|euros?|евро)?/i,
+  // English, Spanish and Russian phrasings. The lookbehind keeps "до" from
+  // matching inside a word.
+  /(?<!\p{L})(?:under|below|less than|cheaper than|max|up to|menos de|por debajo de|hasta|máximo|maximo|до|дешевле|не дороже|меньше)\s*[$€]?\s*(\d+(?:[.,]\d+)?)\s*(?:€|eur|euros?|евро)?/iu,
   /<\s*[$€]?\s*(\d+(?:[.,]\d+)?)/,
   /[$€]\s*(\d+(?:[.,]\d+)?)\s*(?:or less|and under|max)/i,
 ]
 
-/** Parse an explicit budget out of the query: "under 200", "до 50 евро", "<100". */
+/** Parse an explicit budget out of the query: "under 200", "menos de 60", "до 50 евро", "<100". */
 export function extractMaxPrice(input: string): number | null {
   for (const re of BUDGET_PATTERNS) {
     const m = input.match(re)

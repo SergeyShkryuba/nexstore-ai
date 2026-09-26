@@ -37,6 +37,9 @@ TypeScript, Tailwind CSS v4 and Supabase, with Stripe Checkout for payments.
 - **Auth** — Supabase email/password, session refreshed in `src/proxy.ts`.
 - **Wishlist & reviews** — per-user, enforced by Row Level Security. Product
   rating is computed from the reviews that actually exist.
+- **Three languages** — English, Spanish and Russian: the interface, the
+  catalogue (titles, descriptions, specifications, categories), Stripe's
+  payment page, prices and dates, with a language switcher in the header.
 - **Admin panel** — dashboard and product creation, gated on `profiles.role`
   both in the UI and in the RLS policies.
 - **Abuse limits** — checkout and search are rate-limited per visitor, one
@@ -107,6 +110,27 @@ recurse through the `profiles` policies.
 
 If the Edge Function is slow or down, search falls back to lexical ranking and
 the UI says so. All three modules are pure and unit-tested without a database.
+
+**Languages** ([next-intl](https://next-intl.dev)). English keeps the
+unprefixed URLs it always had (`/product/x`); Spanish and Russian live under
+`/es/...` and `/ru/...`, and `/` sends a first-time visitor to the language
+their browser asks for. Every page sits under `app/[locale]`, and the
+catalogue is still prerendered with ISR — once per language.
+
+- *Interface strings* are in `messages/{en,es,ru}.json`. English is the source
+  of truth: a key missing from `en.json` fails the typecheck, and a test fails
+  if Spanish or Russian lacks a key, a `{placeholder}` or a tag that English
+  has. Plurals use ICU, so Russian gets its three forms.
+- *Catalogue text* is in `product_translations` / `category_translations`
+  (Spanish and Russian; English is the row itself). Queries embed a row's
+  translations and `src/lib/localized.ts` picks the visitor's, falling back to
+  English field by field, so a new product appears in every language at once.
+- *Search* ranks against the visitor's language and reads budgets in all three
+  ("under 60", "menos de 60", "до 60"). Its semantic half stays English.
+- *Access rules* in `src/proxy.ts` compare the path without its language
+  prefix (and normalised), so `/es/admin` is as closed as `/admin`.
+- *Stripe* opens in the visitor's language, with translated line names, and
+  returns them to the same language.
 
 **Fonts** are self-hosted through `@fontsource-variable/*` rather than
 `next/font/google`, so builds do not depend on reaching fonts.googleapis.com
@@ -228,6 +252,11 @@ events — the last three are what put reserved stock back on sale:
 
 Listed rather than hidden:
 
+- The admin panel is in English, and product translations are entered in the
+  database (or `seed.sql`); the admin forms edit the English text only.
+- Supabase's own emails (confirmation, password reset) are in English.
+- A cart line keeps the title it was added with; switching language does not
+  rename lines already in the cart (checkout and Stripe use the new language).
 - Semantic search is English-only: gte-small is an English model, so a
   Russian or Spanish query falls back to keyword matching in practice.
 - The similarity thresholds were calibrated on a 10-product catalogue; a much

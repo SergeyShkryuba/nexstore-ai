@@ -42,11 +42,16 @@ async function freeSlug(supabase: Supabase, table: 'products' | 'categories', ba
   return slug
 }
 
+/**
+ * Every page lives under app/[locale], so the routes are named by pattern:
+ * one call covers the page in all three languages. (A plain '/product/x'
+ * would name a URL that is only ever reached through a rewrite, and miss.)
+ */
 function revalidateCatalogue(slug?: string) {
-  revalidatePath('/admin/products')
-  revalidatePath('/')
-  revalidatePath('/categories/[slug]', 'page')
-  if (slug) revalidatePath(`/product/${slug}`)
+  revalidatePath('/[locale]/admin/products', 'page')
+  revalidatePath('/[locale]', 'page')
+  revalidatePath('/[locale]/categories/[slug]', 'page')
+  if (slug) revalidatePath('/[locale]/product/[slug]', 'page')
 }
 
 /**
@@ -203,8 +208,8 @@ export async function updateOrderStatus(orderId: string, status: string): Promis
   // RLS without an admin UPDATE policy filters the row out rather than erroring.
   if (!updated) return { error: 'Order not found, or orders cannot be edited yet (run schema.sql)' }
 
-  revalidatePath('/admin/orders')
-  revalidatePath('/profile')
+  revalidatePath('/[locale]/admin/orders', 'page')
+  revalidatePath('/[locale]/profile', 'page')
   return { success: true }
 }
 
@@ -215,7 +220,7 @@ export async function updateOrderStatus(orderId: string, status: string): Promis
  * category page, so a change revalidates the whole layout.
  */
 function revalidateCategories() {
-  revalidatePath('/', 'layout')
+  revalidatePath('/[locale]', 'layout')
 }
 
 /** A category's name is part of its products' search text; re-embed them. */

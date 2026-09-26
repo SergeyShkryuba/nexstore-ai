@@ -1,7 +1,28 @@
-import { render, screen } from '@testing-library/react'
+import { render as rtlRender, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { NextIntlClientProvider } from 'next-intl'
 import { ProductCard } from './ProductCard'
+import { MESSAGES } from '@/i18n/messages'
+import type { Locale } from '@/i18n/routing'
+
+// The locale-aware Link reads the current path from the App Router.
+vi.mock('next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('next/navigation')>()),
+  usePathname: () => '/',
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+  useParams: () => ({}),
+}))
+
+/** Renders inside the same provider the locale layout uses. */
+function render(ui: React.ReactElement, locale: Locale = 'en') {
+  return rtlRender(
+    <NextIntlClientProvider locale={locale} messages={MESSAGES[locale]}>
+      {ui}
+    </NextIntlClientProvider>,
+  )
+}
 import { useCartStore } from '@/store/useCartStore'
 import { toast } from 'sonner'
 
@@ -96,5 +117,13 @@ describe('ProductCard', () => {
     render(<ProductCard product={mockProduct} />)
 
     expect(screen.queryByText(/sold out/i)).not.toBeInTheDocument()
+  })
+
+  it('speaks the visitor’s language: Spanish labels and price format, prefixed link', () => {
+    render(<ProductCard product={mockProduct} />, 'es')
+
+    expect(screen.getByRole('button', { name: /añadir al carrito/i })).toBeInTheDocument()
+    expect(screen.getByText('299,99 €')).toBeInTheDocument()
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/es/product/awesome-gadget')
   })
 })

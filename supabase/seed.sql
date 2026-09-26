@@ -112,3 +112,87 @@ update products p
 set inventory_count = v.total
 from (select product_id, sum(inventory_count) as total from product_variants group by product_id) v
 where v.product_id = p.id;
+
+-- Spanish and Russian versions of the demo catalogue (see "Translations" in
+-- schema.sql). Upserts, like the rest of this file.
+insert into category_translations (category_id, locale, name, description) values
+  ('11111111-1111-1111-1111-111111111111', 'es', 'Electrónica', 'Gadgets y dispositivos electrónicos'),
+  ('22222222-2222-2222-2222-222222222222', 'es', 'Ropa', 'Ropa y accesorios'),
+  ('33333333-3333-3333-3333-333333333333', 'es', 'Hogar inteligente', 'Dispositivos de domótica'),
+  ('11111111-1111-1111-1111-111111111111', 'ru', 'Электроника', 'Гаджеты и электронные устройства'),
+  ('22222222-2222-2222-2222-222222222222', 'ru', 'Одежда', 'Одежда и аксессуары'),
+  ('33333333-3333-3333-3333-333333333333', 'ru', 'Умный дом', 'Устройства для умного дома')
+on conflict (category_id, locale) do update
+  set name = excluded.name,
+      description = excluded.description,
+      updated_at = now();
+
+insert into product_translations (product_id, locale, title, description, attributes) values
+  -- Spanish
+  ('00000000-0000-0000-0000-000000000001', 'es', 'Auriculares inalámbricos con cancelación de ruido',
+   'Auriculares premium con cancelación de ruido, 30 horas de batería y audio espacial. Perfectos para viajar y concentrarse.',
+   '{"color": "Negro", "conectividad": "Bluetooth 5.2", "batería": "30 horas"}'::jsonb),
+  ('00000000-0000-0000-0000-000000000002', 'es', 'Cámara deportiva 4K',
+   'Cámara deportiva resistente y sumergible que graba vídeo 4K a 60 fps. Incluye accesorios de montaje.',
+   '{"resolución": "4K", "sumergible": "Hasta 10 m", "color": "Gris"}'::jsonb),
+  ('00000000-0000-0000-0000-000000000003', 'es', 'Teclado mecánico',
+   'Teclado mecánico gaming con retroiluminación RGB, interruptores táctiles y macros personalizables.',
+   '{"interruptores": "Táctiles", "distribución": "US ANSI", "retroiluminación": "RGB"}'::jsonb),
+  ('00000000-0000-0000-0000-000000000008', 'es', 'Auriculares Bluetooth compactos',
+   'Auriculares true wireless ligeros con un estuche de carga que cabe en el bolsillo y 24 horas de reproducción en total.',
+   '{"color": "Blanco", "conectividad": "Bluetooth 5.3", "batería": "24 horas"}'::jsonb),
+  ('00000000-0000-0000-0000-000000000004', 'es', 'Camiseta de algodón minimalista',
+   'Camiseta ultrasuave de algodón 100 % orgánico. Transpirable y perfecta para el día a día.',
+   '{"color": "Blanco", "material": "Algodón orgánico"}'::jsonb),
+  ('00000000-0000-0000-0000-000000000005', 'es', 'Chaqueta vaquera clásica',
+   'Chaqueta vaquera con lavado vintage, botones de cobre y corte holgado.',
+   '{"color": "Azul", "material": "Denim"}'::jsonb),
+  ('00000000-0000-0000-0000-000000000009', 'es', 'Jersey de lana merino',
+   'Jersey de punto fino de lana merino que abriga sin abultar. Una buena capa para las noches frías.',
+   '{"color": "Rojo", "material": "Lana merino", "temporada": "invierno"}'::jsonb),
+  ('00000000-0000-0000-0000-000000000006', 'es', 'Altavoz inteligente con asistente de voz',
+   'Altavoz inteligente compacto con un sonido envolvente y asistente de voz integrado para controlar el hogar.',
+   '{"color": "Carbón", "asistente de voz": "Incluido", "conectividad": "Wi-Fi"}'::jsonb),
+  ('00000000-0000-0000-0000-000000000007', 'es', 'Termostato inteligente Wi-Fi',
+   'Termostato inteligente de bajo consumo que aprende tus hábitos y se controla desde el móvil.',
+   '{"conectividad": "Wi-Fi", "alimentación": "Requiere cable C", "color": "Blanco"}'::jsonb),
+  ('00000000-0000-0000-0000-00000000000a', 'es', 'Bombilla inteligente RGB',
+   'Bombilla de color regulable que puedes controlar desde el móvil o por voz. No necesita hub.',
+   '{"color": "Multicolor", "potencia": "9 W", "conectividad": "Wi-Fi"}'::jsonb),
+
+  -- Russian
+  ('00000000-0000-0000-0000-000000000001', 'ru', 'Беспроводные наушники с шумоподавлением',
+   'Премиальные наушники с активным шумоподавлением, 30 часами работы от батареи и пространственным звуком. Идеальны для поездок и сосредоточенной работы.',
+   '{"цвет": "Чёрный", "подключение": "Bluetooth 5.2", "батарея": "30 часов"}'::jsonb),
+  ('00000000-0000-0000-0000-000000000002', 'ru', 'Экшн-камера 4K',
+   'Прочная водонепроницаемая экшн-камера, снимает видео 4K при 60 кадрах в секунду. Крепления в комплекте.',
+   '{"разрешение": "4K", "водозащита": "До 10 м", "цвет": "Серый"}'::jsonb),
+  ('00000000-0000-0000-0000-000000000003', 'ru', 'Механическая клавиатура',
+   'Игровая механическая клавиатура с RGB-подсветкой, тактильными переключателями и настраиваемыми макросами.',
+   '{"переключатели": "Тактильные", "раскладка": "US ANSI", "подсветка": "RGB"}'::jsonb),
+  ('00000000-0000-0000-0000-000000000008', 'ru', 'Компактные Bluetooth-наушники',
+   'Лёгкие полностью беспроводные наушники с карманным зарядным кейсом и 24 часами воспроизведения в сумме.',
+   '{"цвет": "Белый", "подключение": "Bluetooth 5.3", "батарея": "24 часа"}'::jsonb),
+  ('00000000-0000-0000-0000-000000000004', 'ru', 'Минималистичная хлопковая футболка',
+   'Очень мягкая футболка из 100% органического хлопка. Дышащая и удобная на каждый день.',
+   '{"цвет": "Белый", "материал": "Органический хлопок"}'::jsonb),
+  ('00000000-0000-0000-0000-000000000005', 'ru', 'Классическая джинсовая куртка',
+   'Джинсовая куртка с винтажной стиркой, медной фурнитурой и свободным кроем.',
+   '{"цвет": "Синий", "материал": "Деним"}'::jsonb),
+  ('00000000-0000-0000-0000-000000000009', 'ru', 'Свитер из шерсти мериноса',
+   'Свитер тонкой вязки из шерсти мериноса: тёплый, но не громоздкий. Хороший слой для холодных вечеров.',
+   '{"цвет": "Красный", "материал": "Шерсть мериноса", "сезон": "зима"}'::jsonb),
+  ('00000000-0000-0000-0000-000000000006', 'ru', 'Умная колонка с голосовым ассистентом',
+   'Компактная умная колонка с насыщенным звуком и встроенным голосовым ассистентом для управления умным домом.',
+   '{"цвет": "Графит", "голосовой ассистент": "Есть", "подключение": "Wi-Fi"}'::jsonb),
+  ('00000000-0000-0000-0000-000000000007', 'ru', 'Умный термостат с Wi-Fi',
+   'Энергосберегающий умный термостат: запоминает ваши привычки и управляется со смартфона.',
+   '{"подключение": "Wi-Fi", "питание": "Нужен провод C", "цвет": "Белый"}'::jsonb),
+  ('00000000-0000-0000-0000-00000000000a', 'ru', 'Умная RGB-лампа',
+   'Цветная лампа с регулировкой яркости: управляется с телефона или голосом. Хаб не нужен.',
+   '{"цвет": "Многоцветная", "мощность": "9 Вт", "подключение": "Wi-Fi"}'::jsonb)
+on conflict (product_id, locale) do update
+  set title = excluded.title,
+      description = excluded.description,
+      attributes = excluded.attributes,
+      updated_at = now();

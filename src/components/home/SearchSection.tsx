@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { useLocale, useTranslations } from 'next-intl'
+import { useRouter } from '@/i18n/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Search, Loader2, ImageOff } from 'lucide-react'
@@ -39,21 +40,12 @@ type SearchResponse = {
   took_ms: number
 }
 
-const STRATEGY_LABEL: Record<SearchResponse['strategy'], string> = {
-  hybrid: 'semantic + keyword ranking',
-  // Shown when the embedding service did not answer: say so rather than pretend.
-  lexical: 'keyword ranking only',
-}
-
-// The last two name no product: they only work because search matches meaning.
-const EXAMPLES = [
-  'wireless headphones',
-  'smart home under 60',
-  'something to keep me warm in winter',
-  'film my surfing trip',
-]
-
 export function SearchSection() {
+  const t = useTranslations('Search')
+  const locale = useLocale()
+  // Per language. In English the last two name no product: they only work
+  // because search matches meaning.
+  const examples = t.raw('examples') as string[]
   const router = useRouter()
   const [query, setQuery] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -62,7 +54,7 @@ export function SearchSection() {
   // Type-ahead: open while the shopper types, closed on submit, Escape or blur.
   const [suggestOpen, setSuggestOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
-  const suggestions = useSuggestions(query, suggestOpen)
+  const suggestions = useSuggestions(query, suggestOpen, locale)
   const showSuggestions = suggestOpen && suggestions.length > 0
   const active = activeIndex < suggestions.length ? activeIndex : -1
 
@@ -104,20 +96,20 @@ export function SearchSection() {
       const res = await fetch('/api/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: trimmed }),
+        body: JSON.stringify({ query: trimmed, locale }),
       })
 
       const data = await res.json()
 
       if (!res.ok) {
-        toast.error(data?.error ?? 'Search failed')
+        toast.error(data?.error ?? t('failed'))
         return
       }
 
       setResponse(data as SearchResponse)
     } catch (error) {
       console.error('Search failed', error)
-      toast.error('Search failed', { description: 'Please try again later.' })
+      toast.error(t('failed'), { description: t('tryLater') })
     } finally {
       setIsLoading(false)
     }
@@ -144,12 +136,9 @@ export function SearchSection() {
 
         <div className="mx-auto w-full max-w-2xl px-4 py-16 md:py-24 text-center space-y-6">
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">
-            Search the catalogue <span className="text-primary">in your own words</span>
+            {t.rich('title', { em: (chunks) => <span className="text-primary">{chunks}</span> })}
           </h1>
-          <p className="text-xl text-muted-foreground">
-            Describe what you need — even without the product&apos;s name, and with a budget like
-            &ldquo;under 60&rdquo; — and search matches it by meaning as well as by keywords.
-          </p>
+          <p className="text-xl text-muted-foreground">{t('intro')}</p>
 
           <div className="relative">
             <form
@@ -163,7 +152,7 @@ export function SearchSection() {
                   className="absolute left-4 top-3.5 h-6 w-6 text-muted-foreground"
                 />
                 <label htmlFor="catalogue-search" className="sr-only">
-                  Search products
+                  {t('label')}
                 </label>
                 <Input
                   id="catalogue-search"
@@ -181,7 +170,7 @@ export function SearchSection() {
                   }}
                   onKeyDown={handleKeyDown}
                   onBlur={() => setSuggestOpen(false)}
-                  placeholder="e.g., noise cancelling headphones under 300"
+                  placeholder={t('placeholder')}
                   className="w-full pl-12 h-14 text-lg border-0 focus-visible:ring-0 rounded-none bg-background"
                 />
               </div>
@@ -190,7 +179,7 @@ export function SearchSection() {
                 disabled={isLoading || query.trim().length < 2}
                 className="h-14 px-8 rounded-none text-lg"
               >
-                {isLoading ? <Loader2 className="h-6 w-6 animate-spin" aria-label="Searching" /> : 'Search'}
+                {isLoading ? <Loader2 className="h-6 w-6 animate-spin" aria-label={t('searching')} /> : t('submit')}
               </Button>
             </form>
 
@@ -198,7 +187,7 @@ export function SearchSection() {
               <ul
                 id="search-suggestions"
                 role="listbox"
-                aria-label="Suggested products"
+                aria-label={t('suggestions')}
                 // Keep focus in the input so a click is not lost to its blur.
                 onMouseDown={(e) => e.preventDefault()}
                 className="absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-lg border bg-popover text-left text-popover-foreground shadow-xl"
@@ -224,7 +213,7 @@ export function SearchSection() {
                       )}
                     </span>
                     <span className="flex-1 truncate">{suggestion.title}</span>
-                    <span className="text-sm text-muted-foreground">{formatPrice(suggestion.price)}</span>
+                    <span className="text-sm text-muted-foreground">{formatPrice(suggestion.price, locale)}</span>
                   </li>
                 ))}
               </ul>
@@ -232,8 +221,8 @@ export function SearchSection() {
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
-            <span className="text-muted-foreground">Try:</span>
-            {EXAMPLES.map((example) => (
+            <span className="text-muted-foreground">{t('try')}</span>
+            {examples.map((example) => (
               <button
                 key={example}
                 type="button"
@@ -262,13 +251,12 @@ export function SearchSection() {
         >
           <div className="flex flex-wrap items-baseline justify-between gap-2 border-b pb-2">
             <h2 className="text-2xl font-bold">
-              {response.results.length > 0
-                ? `${response.results.length} ${response.results.length === 1 ? 'result' : 'results'}`
-                : 'No matches'}
+              {response.results.length > 0 ? t('results', { count: response.results.length }) : t('noMatches')}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {STRATEGY_LABEL[response.strategy]} · {response.took_ms} ms
-              {response.maxPrice !== null && ` · budget ≤ €${response.maxPrice}`}
+              {/* "keyword ranking only" when the embedding service did not answer: say so rather than pretend. */}
+              {t(`strategy.${response.strategy}`)} · {response.took_ms} ms
+              {response.maxPrice !== null && ` · ${t('budget', { amount: formatPrice(response.maxPrice, locale) })}`}
             </p>
           </div>
 
@@ -279,16 +267,16 @@ export function SearchSection() {
                   <ProductCard product={{ ...product, image_urls: product.image_urls ?? [] }} />
                   <p className="text-xs text-muted-foreground px-1">
                     {matchedTerms.length > 0
-                      ? `matched: ${matchedTerms.join(', ')}`
-                      : 'matched by meaning'}
-                    {similarity !== null && ` · similarity ${similarity.toFixed(2)}`}
+                      ? t('matchedTerms', { terms: matchedTerms.join(', ') })
+                      : t('matchedByMeaning')}
+                    {similarity !== null && ` · ${t('similarity', { value: similarity.toFixed(2) })}`}
                   </p>
                 </div>
               ))}
             </div>
           ) : (
             <p className="text-muted-foreground text-lg">
-              Nothing in the catalogue matches that. Try fewer words, or raise the budget.
+              {t('nothingMatches')}
             </p>
           )}
         </div>

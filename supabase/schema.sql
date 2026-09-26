@@ -963,3 +963,47 @@ revoke all on function public.rate_limit_hit(text, integer, integer) from public
 revoke all on function public.purge_rate_limits() from public, anon, authenticated;
 grant execute on function public.rate_limit_hit(text, integer, integer) to service_role;
 grant execute on function public.purge_rate_limits() to service_role;
+
+-- ======================== Translations =====================================
+-- The catalogue is written in English in `products` and `categories`; these
+-- hold Spanish and Russian versions. A missing row, or a missing field in it,
+-- falls back to English, so a new product shows up in every language at once
+-- and can be translated later. `attributes` is the whole translated object
+-- (keys and values), shown as the product's specifications.
+
+create table if not exists product_translations (
+  product_id uuid not null references products(id) on delete cascade,
+  locale text not null check (locale in ('es', 'ru')),
+  title text not null check (char_length(title) between 1 and 200),
+  description text check (char_length(description) <= 5000),
+  attributes jsonb,
+  updated_at timestamptz not null default now(),
+  primary key (product_id, locale)
+);
+
+create table if not exists category_translations (
+  category_id uuid not null references categories(id) on delete cascade,
+  locale text not null check (locale in ('es', 'ru')),
+  name text not null check (char_length(name) between 1 and 100),
+  description text check (char_length(description) <= 1000),
+  updated_at timestamptz not null default now(),
+  primary key (category_id, locale)
+);
+
+alter table product_translations enable row level security;
+alter table category_translations enable row level security;
+
+-- Readable by everyone, like the catalogue itself; written by admins only.
+drop policy if exists "Product translations are public" on product_translations;
+create policy "Product translations are public"
+  on product_translations for select using (true);
+drop policy if exists "Admins manage product translations" on product_translations;
+create policy "Admins manage product translations"
+  on product_translations for all using (public.is_admin()) with check (public.is_admin());
+
+drop policy if exists "Category translations are public" on category_translations;
+create policy "Category translations are public"
+  on category_translations for select using (true);
+drop policy if exists "Admins manage category translations" on category_translations;
+create policy "Admins manage category translations"
+  on category_translations for all using (public.is_admin()) with check (public.is_admin());

@@ -1,13 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@/i18n/navigation'
 import { BadgeCheck, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { addReview } from '@/app/actions/reviews'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { MAX_REVIEW_LENGTH } from '@/lib/review-limits'
+import { useLocale, useTranslations } from 'next-intl'
+import { formatDate } from '@/lib/format'
 
 interface Review {
   id: string
@@ -23,6 +25,8 @@ interface Review {
 }
 
 export function ReviewSection({ productId, initialReviews }: { productId: string, initialReviews: Review[] }) {
+  const t = useTranslations('Reviews')
+  const locale = useLocale()
   const [rating, setRating] = useState(5)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
@@ -44,7 +48,7 @@ export function ReviewSection({ productId, initialReviews }: { productId: string
         toast.error(result.error)
         return
       }
-      toast.success('Review submitted')
+      toast.success(t('submitted'))
       form.reset()
       setRating(5)
       // Pull the freshly written review back from the server.
@@ -56,31 +60,31 @@ export function ReviewSection({ productId, initialReviews }: { productId: string
 
   return (
     <div className="space-y-12 mt-16 border-t pt-12">
-      <h2 className="text-2xl font-bold tracking-tight">Customer Reviews</h2>
+      <h2 className="text-2xl font-bold tracking-tight">{t('title')}</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
         {/* Reviews List */}
         <div className="space-y-8">
           {initialReviews.length === 0 ? (
-            <p className="text-muted-foreground">No reviews yet. Be the first to review this product!</p>
+            <p className="text-muted-foreground">{t('none')}</p>
           ) : (
             initialReviews.map(review => (
               <div key={review.id} className="flex gap-4 border-b pb-6 last:border-0">
                 <Avatar>
                   <AvatarImage src={review.profiles?.avatar_url || ''} alt="" />
-                  <AvatarFallback>{review.profiles?.full_name?.charAt(0) ?? 'U'}</AvatarFallback>
+                  <AvatarFallback>{review.profiles?.full_name?.charAt(0) ?? '?'}</AvatarFallback>
                 </Avatar>
                 <div className="space-y-1 flex-1">
                   <div className="flex items-center justify-between">
-                    <p className="font-medium text-sm">{review.profiles?.full_name || 'Anonymous User'}</p>
+                    <p className="font-medium text-sm">{review.profiles?.full_name || t('anonymous')}</p>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(review.created_at).toLocaleDateString()}
+                      {formatDate(review.created_at, locale)}
                     </span>
                   </div>
                   {review.verified_purchase && (
                     <p className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                       <BadgeCheck className="size-3.5" aria-hidden="true" />
-                      Verified purchase
+                      {t('verified')}
                     </p>
                   )}
                   <div className="flex text-yellow-400 my-2">
@@ -97,18 +101,18 @@ export function ReviewSection({ productId, initialReviews }: { productId: string
 
         {/* Add Review Form */}
         <div className="bg-muted/30 p-6 rounded-xl h-fit">
-          <h3 className="text-lg font-semibold mb-4">Write a Review</h3>
+          <h3 className="text-lg font-semibold mb-4">{t('write')}</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <p className="text-sm font-medium mb-2">Rating</p>
-              <div className="flex gap-1" role="radiogroup" aria-label="Rating">
+              <p className="text-sm font-medium mb-2">{t('rating')}</p>
+              <div className="flex gap-1" role="radiogroup" aria-label={t('rating')}>
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
                     key={star}
                     type="button"
                     role="radio"
                     aria-checked={star === rating}
-                    aria-label={`${star} ${star === 1 ? 'star' : 'stars'}`}
+                    aria-label={t('stars', { count: star })}
                     onClick={() => setRating(star)}
                     className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
@@ -122,21 +126,22 @@ export function ReviewSection({ productId, initialReviews }: { productId: string
             </div>
             
             <div>
-              <p className="text-sm font-medium mb-2">Comment (Optional)</p>
+              <p className="text-sm font-medium mb-2">{t('comment')}</p>
               <textarea
                 name="comment"
                 maxLength={MAX_REVIEW_LENGTH}
                 className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                placeholder="What did you like or dislike?"
+                placeholder={t('placeholder')}
+                aria-label={t('comment')}
               />
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Reviews from shoppers who bought the product are marked &ldquo;Verified purchase&rdquo;.
+              {t('verifiedHint')}
             </p>
 
             <Button type="submit" disabled={isSubmitting} className="w-full">
-              {isSubmitting ? 'Submitting...' : 'Submit Review'}
+              {isSubmitting ? t('submitting') : t('submit')}
             </Button>
           </form>
         </div>

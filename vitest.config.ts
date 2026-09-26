@@ -10,6 +10,13 @@ export default defineConfig({
     setupFiles: './vitest-setup.ts',
     alias: {
       '@': path.resolve(__dirname, './src')
-    }
+    },
+    server: {
+      deps: {
+        // next-intl's ESM imports `next/navigation` without an extension,
+        // which Node's resolver refuses; let Vite resolve it instead.
+        inline: ['next-intl'],
+      },
+    },
   }
 })

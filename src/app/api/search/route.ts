@@ -6,11 +6,16 @@ import { fuseResults, type SemanticMatch } from '@/lib/hybrid'
 import { embedTexts, toPgVector } from '@/lib/embeddings'
 import { clientIp, hitLimit } from '@/lib/rate-limit'
 import { createServiceClient } from '@/utils/supabase/service'
+import { LOCALES } from '@/i18n/routing'
+import { translatorFor } from '@/i18n/messages'
+import { PRODUCT_TRANSLATIONS, localizeProducts } from '@/lib/localized'
 
 export const runtime = 'nodejs'
 
 const searchRequestSchema = z.object({
-  query: z.string().trim().min(2, 'Query must be at least 2 characters').max(200),
+  query: z.string().trim().min(2, 'tooShort').max(200, 'tooLong'),
+  // Results come back with titles in this language, and it is ranked against them.
+  locale: z.enum(LOCALES).default('en'),
 })
 
 /**
@@ -69,33 +74,35 @@ async function semanticMatches(
 export async function POST(req: Request) {
   const startedAt = Date.now()
 
+  // Read first so errors come back in the shopper's language; a small JSON
+  // body is not what a flood costs us — the embedding call below is.
+  let body: unknown = null
+  try {
+    body = await req.json()
+  } catch {
+    // Answered after the limiter.
+  }
+  const { t } = translatorFor((body as { locale?: unknown } | null)?.locale)
+
   // Every search calls the embedding Edge Function; a flood would burn through
   // the project's function quota. Type-ahead (/api/search/suggest) is lexical
   // and CDN-cached, so it is not limited.
   const limited = await hitLimit(createServiceClient(), 'search', clientIp(req.headers))
   if (!limited.allowed) {
     return NextResponse.json(
-      { error: 'Too many searches. Please wait a moment and try again.' },
+      { error: t('Search.api.tooMany') },
       { status: 429, headers: { 'Retry-After': String(limited.retryAfterSeconds) } },
     )
   }
 
-  let body: unknown
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
-  }
-
   const parsed = searchRequestSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? 'Invalid request' },
-      { status: 400 },
-    )
+    const code = parsed.error.issues[0]?.message
+    const error = code === 'tooShort' || code === 'tooLong' ? t(`Search.api.${code}`) : t('Search.api.invalid')
+    return NextResponse.json({ error }, { status: 400 })
   }
 
-  const { query } = parsed.data
+  const { query, locale } = parsed.data
 
   try {
     const supabase = await createClient()
@@ -104,17 +111,20 @@ export async function POST(req: Request) {
       await Promise.all([
         supabase
           .from('products')
-          .select('id, title, slug, description, price, category_id, image_urls, attributes, inventory_count, variants:product_variants(size, inventory_count, sort_order)'),
+          .select(`id, title, slug, description, price, category_id, image_urls, attributes, inventory_count, variants:product_variants(size, inventory_count, sort_order), ${PRODUCT_TRANSLATIONS}`),
         supabase.from('categories').select('id, slug'),
         semanticMatches(supabase, query),
       ])
 
     if (productsError) {
       console.error('Search: failed to load products', productsError)
-      return NextResponse.json({ error: 'Search is temporarily unavailable' }, { status: 503 })
+      return NextResponse.json({ error: t('Search.api.unavailable') }, { status: 503 })
     }
 
-    const catalogue = (products ?? []) as SearchableProduct[]
+    // Ranked in the shopper's language: a Spanish query is matched against
+    // Spanish titles. (The semantic half stays English: gte-small is an
+    // English model.)
+    const catalogue = localizeProducts(products, locale) as SearchableProduct[]
     const categorySlugToId = Object.fromEntries(
       (categories ?? []).map((c) => [c.slug as string, c.id as string]),
     )
@@ -140,6 +150,6 @@ export async function POST(req: Request) {
     return NextResponse.json(response)
   } catch (error) {
     console.error('Search API error:', error)
-    return NextResponse.json({ error: 'Failed to process search' }, { status: 500 })
+    return NextResponse.json({ error: t('Search.api.failed') }, { status: 500 })
   }
 }

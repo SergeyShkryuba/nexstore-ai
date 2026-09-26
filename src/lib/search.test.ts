@@ -186,3 +186,23 @@ describe('rankProducts', () => {
     expect(first).toEqual(second)
   })
 })
+
+describe('budgets and filler words in Spanish and Russian', () => {
+  it.each([
+    ['auriculares menos de 60', 60],
+    ['algo para el invierno hasta 120 euros', 120],
+    ['наушники до 80', 80],
+    ['колонка дешевле 50 евро', 50],
+  ])('reads the budget in %s', (query, budget) => {
+    expect(extractMaxPrice(query)).toBe(budget)
+  })
+
+  it('does not read "до" inside a word as a budget', () => {
+    expect(extractMaxPrice('подойдёт 5 штук')).toBeNull()
+  })
+
+  it('drops filler words so they cannot match product text', () => {
+    expect(tokenize('quiero algo para el invierno')).toEqual(['invierno'])
+    expect(tokenize('мне нужно что-нибудь тёплое')).toEqual(['тёплое'])
+  })
+})

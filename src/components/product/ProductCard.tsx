@@ -1,7 +1,8 @@
 'use client'
 
-import Link from 'next/link'
 import Image from 'next/image'
+import { useLocale, useTranslations } from 'next-intl'
+import { Link } from '@/i18n/navigation'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { useCartStore } from '@/store/useCartStore'
@@ -14,6 +15,7 @@ import { sortVariants } from '@/lib/variants'
 import { cn } from '@/lib/utils'
 
 interface ProductCardProps {
+  /** Already in the visitor's language (see `localizeProduct`). */
   product: {
     id: string
     title: string
@@ -28,6 +30,9 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
+  const t = useTranslations('ProductCard')
+  const tStock = useTranslations('Stock')
+  const locale = useLocale()
   const addItem = useCartStore((state) => state.addItem)
   const imageUrl = product.image_urls?.[0]
   const stock = stockLevel(product.inventory_count)
@@ -45,7 +50,7 @@ export function ProductCard({ product }: ProductCardProps) {
       quantity: 1,
       image_url: imageUrl,
     })
-    toast.success('Added to cart', { description: product.title })
+    toast.success(t('added'), { description: product.title })
   }
 
   return (
@@ -65,7 +70,7 @@ export function ProductCard({ product }: ProductCardProps) {
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
               <ImageOff className="h-8 w-8" aria-hidden="true" />
-              <span className="sr-only">No image available</span>
+              <span className="sr-only">{t('noImage')}</span>
             </div>
           )}
           {(stock === 'out' || stock === 'low') && (
@@ -75,16 +80,16 @@ export function ProductCard({ product }: ProductCardProps) {
                 stock === 'out' ? 'bg-background/90' : 'bg-amber-500 text-black',
               )}
             >
-              {stock === 'out' ? 'Sold out' : stockLabel(product.inventory_count)}
+              {stock === 'out' ? t('soldOut') : stockLabel(product.inventory_count, (k, v) => tStock(k, v))}
             </span>
           )}
         </div>
         <CardContent className="p-4">
           <h3 className="font-semibold text-lg line-clamp-1">{product.title}</h3>
-          <p className="text-primary font-bold mt-2">{formatPrice(product.price)}</p>
+          <p className="text-primary font-bold mt-2">{formatPrice(product.price, locale)}</p>
           {sizesInStock.length > 0 && (
             <p className="mt-1 text-xs text-muted-foreground">
-              <span className="sr-only">Sizes in stock: </span>
+              <span className="sr-only">{t('sizesInStock')} </span>
               {sizesInStock.join(' · ')}
             </p>
           )}
@@ -104,12 +109,12 @@ export function ProductCard({ product }: ProductCardProps) {
           // A sized product cannot go into the cart without a size.
           <Link href={productUrl} className={buttonVariants({ className: 'w-full' })}>
             <Ruler className="w-4 h-4 mr-2" aria-hidden="true" />
-            Choose size
+            {t('chooseSize')}
           </Link>
         ) : (
           <Button className="w-full" onClick={handleAdd} disabled={soldOut}>
             <ShoppingCart className="w-4 h-4 mr-2" aria-hidden="true" />
-            {soldOut ? 'Sold out' : 'Add to Cart'}
+            {soldOut ? t('soldOut') : t('addToCart')}
           </Button>
         )}
       </CardFooter>

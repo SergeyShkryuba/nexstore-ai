@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@/i18n/navigation'
 import { toast } from 'sonner'
 import { updateOrderStatus } from '@/app/actions/admin'
 import { ORDER_STATUSES, type OrderStatus } from '@/lib/admin-schemas'

@@ -291,3 +291,54 @@ describe('reviews', () => {
     ).rejects.toThrow(/row-level security|permission denied/)
   })
 })
+
+describe('catalogue translations', () => {
+  it('seeds Spanish and Russian for every demo product and category', async () => {
+    const { products, translated } = await one<{ products: number; translated: number }>(
+      `select (select count(*)::int from products) as products,
+              (select count(distinct product_id)::int from product_translations where locale in ('es', 'ru')) as translated`,
+    )
+    expect(translated).toBe(products)
+    const { n } = await one<{ n: number }>(`select count(*)::int as n from category_translations`)
+    expect(n).toBe(6)
+  })
+
+  it('lets anyone read them, like the catalogue', async () => {
+    const rows = await as(db, { role: 'anon' }, async (tx) =>
+      (await tx.query<{ title: string }>(`select title from product_translations where locale = 'ru' limit 1`)).rows,
+    )
+    expect(rows).toHaveLength(1)
+  })
+
+  it('lets only admins change them', async () => {
+    const product = await productId('mech-keyboard')
+    const shopper = await createUser(db, 'translator@example.test')
+    await expect(
+      as(db, { role: 'authenticated', userId: shopper }, (tx) =>
+        tx.query(`update product_translations set title = 'hacked' where product_id = $1 returning 1`, [product]),
+      ).then((r) => r.rows.length),
+    ).resolves.toBe(0)
+    await expect(
+      as(db, { role: 'anon' }, (tx) =>
+        tx.query(`insert into product_translations (product_id, locale, title) values ($1, 'es', 'x')`, [product]),
+      ),
+    ).rejects.toThrow(/row-level security|duplicate key/)
+
+    const admin = await createUser(db, 'admin-translator@example.test')
+    await db.query(`update profiles set role = 'admin' where id = $1`, [admin])
+    const updated = await as(db, { role: 'authenticated', userId: admin }, (tx) =>
+      tx.query(`update product_translations set title = 'Teclado' where product_id = $1 and locale = 'es' returning 1`, [
+        product,
+      ]),
+    )
+    expect(updated.rows).toHaveLength(1)
+  })
+
+  it('accepts only the translated languages', async () => {
+    await expect(
+      db.query(`insert into product_translations (product_id, locale, title) values ($1, 'en', 'x')`, [
+        await productId('smart-speaker'),
+      ]),
+    ).rejects.toThrow('check constraint')
+  })
+})

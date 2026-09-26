@@ -1,22 +1,24 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { Link, useRouter } from '@/i18n/navigation'
 import { Menu, User, X, LogOut, Heart, LayoutDashboard } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { CartButton } from './CartButton'
+import { LocaleSwitcher } from './LocaleSwitcher'
 import { ThemeToggle } from '../theme/ThemeToggle'
 import { AuthModal } from '../auth/AuthModal'
 import { createClient } from '@/utils/supabase/client'
 import { User as SupabaseUser } from '@supabase/supabase-js'
 import type { NavCategory } from '@/lib/nav-categories'
 
-/** Categories come from the root layout, so ones added in the admin appear here. */
+/** Categories come from the locale layout, so ones added in the admin appear here. */
 export function Header({ categories }: { categories: NavCategory[] }) {
+  const t = useTranslations('Header')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
-  
+
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const router = useRouter()
   // Module-level singleton, so this reference is stable across renders.
@@ -78,8 +80,15 @@ export function Header({ categories }: { categories: NavCategory[] }) {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center px-4">
-        
-        <Button variant="ghost" size="icon" className="md:hidden mr-2" onClick={toggleMenu}>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden mr-2"
+          onClick={toggleMenu}
+          aria-expanded={isMobileMenuOpen}
+          aria-label={isMobileMenuOpen ? t('closeMenu') : t('openMenu')}
+        >
           {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
 
@@ -97,37 +106,36 @@ export function Header({ categories }: { categories: NavCategory[] }) {
 
         <div className="flex flex-1 items-center justify-end space-x-4">
           <nav className="flex items-center space-x-2">
+            <LocaleSwitcher />
             <ThemeToggle />
-            
+
             {user ? (
               <div className="flex items-center gap-2">
                 {isAdmin && (
                   <Link href="/admin" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
                     <LayoutDashboard aria-hidden="true" />
-                    <span className="hidden sm:inline">Admin</span>
-                    <span className="sr-only sm:hidden">Admin panel</span>
+                    <span className="hidden sm:inline">{t('admin')}</span>
+                    <span className="sr-only sm:hidden">{t('adminPanel')}</span>
                   </Link>
                 )}
-                <Link href="/wishlist">
-                  <Button variant="ghost" size="icon" title="Wishlist">
-                    <Heart className="h-5 w-5" />
-                  </Button>
+                <Link href="/wishlist" className={buttonVariants({ variant: 'ghost', size: 'icon' })} title={t('wishlist')}>
+                  <Heart className="h-5 w-5" aria-hidden="true" />
+                  <span className="sr-only">{t('wishlist')}</span>
                 </Link>
-                <Link href="/profile">
-                  <Button variant="ghost" size="icon" title="Profile">
-                    <User className="h-5 w-5" />
-                  </Button>
+                <Link href="/profile" className={buttonVariants({ variant: 'ghost', size: 'icon' })} title={t('profile')}>
+                  <User className="h-5 w-5" aria-hidden="true" />
+                  <span className="sr-only">{t('profile')}</span>
                 </Link>
-                <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign Out">
+                <Button variant="ghost" size="icon" onClick={handleSignOut} title={t('signOut')} aria-label={t('signOut')}>
                   <LogOut className="h-5 w-5" />
                 </Button>
               </div>
             ) : (
-              <Button variant="ghost" size="icon" onClick={() => setIsAuthModalOpen(true)} title="Sign In">
+              <Button variant="ghost" size="icon" onClick={() => setIsAuthModalOpen(true)} title={t('signIn')} aria-label={t('signIn')}>
                 <User className="h-5 w-5" />
               </Button>
             )}
-            
+
             <CartButton />
           </nav>
         </div>
@@ -143,13 +151,13 @@ export function Header({ categories }: { categories: NavCategory[] }) {
             {isAdmin && (
               <Link href="/admin" onClick={closeMenu} className="flex items-center gap-2 border-t pt-4 p-2 rounded-md hover:bg-muted">
                 <LayoutDashboard className="size-4" aria-hidden="true" />
-                Admin panel
+                {t('adminPanel')}
               </Link>
             )}
           </nav>
         </div>
       )}
-      
+
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
     </header>
   )

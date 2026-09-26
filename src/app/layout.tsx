@@ -1,71 +1,8 @@
-import type { Metadata } from "next";
-import "@fontsource-variable/inter";
-import "@fontsource-variable/jetbrains-mono";
-import "./globals.css";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
-import { loadNavCategories } from "@/lib/nav-categories";
-import { ThemeProvider } from "@/components/theme/ThemeProvider";
-import { Toaster } from 'sonner';
-
-import { siteUrl } from "@/lib/site";
-
-export const metadata: Metadata = {
-  // Required for relative OG/Twitter image URLs to resolve to absolute ones.
-  metadataBase: new URL(siteUrl),
-  title: {
-    template: "%s | NexStore AI",
-    default: "NexStore AI - Next Generation E-commerce",
-  },
-  description:
-    "A full-stack Next.js storefront: catalogue search, cart, Stripe checkout and an admin panel.",
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: siteUrl,
-    title: "NexStore AI - Next Generation E-commerce",
-    description: "Experience the future of shopping with our AI-powered e-commerce platform.",
-    siteName: "NexStore AI",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "NexStore AI",
-    description: "Experience the future of shopping with our AI-powered e-commerce platform.",
-  },
-};
-
-export default async function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  // Header and footer both list the categories; one query serves both.
-  const categories = await loadNavCategories();
-
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        suppressHydrationWarning
-        className="antialiased min-h-screen flex flex-col font-sans"
-      >
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:ring-2 focus:ring-ring"
-        >
-          Skip to content
-        </a>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <Header categories={categories} />
-          <main id="main-content" className="flex-1">{children}</main>
-          <Footer categories={categories} />
-          <Toaster />
-        </ThemeProvider>
-      </body>
-    </html>
-  );
+/**
+ * The real root layout, with <html lang>, is `app/[locale]/layout.tsx`: the
+ * language is only known below the [locale] segment. This one exists for the
+ * few routes outside it (`app/not-found.tsx`) and passes children through.
+ */
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return children
 }
