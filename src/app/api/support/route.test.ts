@@ -7,6 +7,9 @@ vi.mock('@/utils/supabase/service', () => ({ createServiceClient: () => ({ from:
 const getUser = vi.fn()
 vi.mock('@/utils/supabase/server', () => ({ createClient: async () => ({ auth: { getUser } }) }))
 
+const notifyOwnerLater = vi.fn()
+vi.mock('@/lib/notify', () => ({ notifyOwnerLater: (...a: unknown[]) => notifyOwnerLater(...a) }))
+
 const { POST } = await import('./route')
 
 const send = (body: unknown) =>
@@ -50,6 +53,22 @@ describe('POST /api/support', () => {
       transcript: valid.transcript,
       locale: 'ru',
     })
+  })
+
+  it('tells the owner once the request is saved, and not when it is refused or fails', async () => {
+    await send(valid)
+    expect(notifyOwnerLater).toHaveBeenCalledWith({
+      kind: 'support',
+      email: valid.email,
+      message: valid.message,
+      summary: valid.summary,
+    })
+
+    notifyOwnerLater.mockClear()
+    await send({ ...valid, email: 'nope' })
+    insert.mockResolvedValue({ error: { message: 'down' } })
+    await send(valid)
+    expect(notifyOwnerLater).not.toHaveBeenCalled()
   })
 
   it('accepts visitors who are not signed in', async () => {

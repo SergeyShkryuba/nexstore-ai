@@ -46,6 +46,10 @@ TypeScript, Tailwind CSS v4 and Supabase, with Stripe Checkout for payments.
   answers from the shipping and returns policy, and hands over to a person
   through a form that lands in the admin panel. Replies stream in; products and
   orders show as cards with links. Hidden unless `ANTHROPIC_API_KEY` is set.
+- **Owner alerts** — every new order (with anything it left running low) and
+  every "talk to a person" request reaches the owner on Telegram and/or
+  WhatsApp, sent after the response so a slow messenger never holds up Stripe
+  or the shopper, and once per order even when Stripe redelivers the event.
 - **Admin panel** — dashboard and product creation, gated on `profiles.role`
   both in the UI and in the RLS policies.
 - **Abuse limits** — checkout and search are rate-limited per visitor, one
@@ -220,6 +224,19 @@ before deploying, or the admin panel's Support page cannot load. Each message
 is rate-limited per visitor (20 per 10 minutes, 150 per day); a spend limit in
 the Anthropic console is still worth setting.
 
+### Owner alerts (optional)
+
+Each messenger is used when its variables are set and skipped otherwise.
+
+- **Telegram:** create a bot with @BotFather, press Start in it, and set
+  `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` (your chat's id, from
+  `https://api.telegram.org/bot<token>/getUpdates`).
+- **WhatsApp (Cloud API):** set `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`
+  and `WHATSAPP_OWNER_NUMBER` (digits, with the country code). A business can
+  only start a conversation with an approved template: create `store_alert`
+  (Utility, English) with the body
+  `NexStore AI: {{1}}. {{2}} Details in the admin panel.`
+
 ## Scripts
 
 | Command | What it does |
@@ -265,6 +282,10 @@ the Anthropic console is still worth setting.
 - `src/app/api/chat/route.test.ts` / `src/app/api/support/route.test.ts` —
   both rate limits counted, errors in the shopper's language, and no model or
   database error text passed to the browser.
+- `src/lib/notify/notify.test.ts` — alert wording (HTML escaped for Telegram,
+  single-line values for WhatsApp templates), one channel failing without the
+  other, no token in any log line, and the low-stock check; the Stripe webhook
+  test checks an order is announced once and never on a redelivery.
 - `supabase/tests/schema.test.ts` — **the SQL itself, on a real Postgres**:
   PGlite (Postgres in WebAssembly, in-process, no Docker) loads the whole
   `schema.sql` twice and `seed.sql`, with Supabase's roles, default grants and
