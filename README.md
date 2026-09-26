@@ -53,7 +53,9 @@ TypeScript, Tailwind CSS v4 and Supabase, with Stripe Checkout for payments.
   every "talk to a person" request reaches the owner on Telegram and/or
   WhatsApp, sent after the response so a slow messenger never holds up Stripe
   or the shopper, and once per order even when Stripe redelivers the event.
-- **Admin panel** — dashboard and product creation, gated on `profiles.role`
+- **Admin panel** — a dashboard (revenue, paid orders and average order against
+  the previous period, revenue per day, top products, orders by status, low
+  stock, open support requests; 7/30/90 days) and product creation, gated on `profiles.role`
   both in the UI and in the RLS policies.
 - **Abuse limits** — checkout and search are rate-limited per visitor, one
   shopper can hold at most three checkouts open, and an order takes at most ten
@@ -277,6 +279,9 @@ Each messenger is used when its variables are set and skipped otherwise.
   read, reservation or Stripe call, and a fourth open checkout is refused.
 - `src/app/api/checkout/cancel/route.test.ts` — Stripe's back link releases
   units only after Stripe has closed the session, never for a paid one.
+- `src/lib/analytics.test.ts` — what counts as revenue (paid, shipped,
+  delivered; never pending, cancelled or refunded), days with no sales, the
+  period comparison, top products and the low-stock list.
 - `src/lib/chat/*.test.ts` — the assistant's tool loop against a scripted
   model (all of a turn's tool results in one message, a failing tool, a call
   cut off at `max_tokens`, the step cap), its tools (budget, sizes in stock,
