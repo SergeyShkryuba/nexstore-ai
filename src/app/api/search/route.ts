@@ -15,16 +15,11 @@ const searchRequestSchema = z.object({
   locale: z.enum(LOCALES).default('en'),
 })
 
-export type SearchResponse = CatalogueSearch & {
-  query: string
-  took_ms: number
-}
+export type SearchResponse = CatalogueSearch & { query: string }
 
 export async function POST(req: Request) {
-  const startedAt = Date.now()
-
   // Read first so errors come back in the shopper's language; a small JSON
-  // body is not what a flood costs us — the embedding call below is.
+  // body is not what a flood costs us — ranking the catalogue is.
   let body: unknown = null
   try {
     body = await req.json()
@@ -33,9 +28,8 @@ export async function POST(req: Request) {
   }
   const { t } = translatorFor((body as { locale?: unknown } | null)?.locale)
 
-  // Every search calls the embedding Edge Function; a flood would burn through
-  // the project's function quota. Type-ahead (/api/search/suggest) is lexical
-  // and CDN-cached, so it is not limited.
+  // Every search reads and ranks the whole catalogue; a flood would load the
+  // database. Type-ahead (/api/search/suggest) is CDN-cached, so it is not limited.
   const limited = await hitLimit(createServiceClient(), 'search', clientIp(req.headers))
   if (!limited.allowed) {
     return NextResponse.json(
@@ -54,9 +48,8 @@ export async function POST(req: Request) {
   const { query, locale } = parsed.data
 
   try {
-    // (The semantic half stays English: gte-small is an English model.)
     const search = await searchCatalogue(await createClient(), query, locale)
-    const response: SearchResponse = { query, ...search, took_ms: Date.now() - startedAt }
+    const response: SearchResponse = { query, ...search }
     return NextResponse.json(response)
   } catch (error) {
     if (error instanceof CatalogueUnavailableError) {

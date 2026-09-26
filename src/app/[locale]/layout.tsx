@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // Required for relative OG/Twitter image URLs to resolve to absolute ones.
     metadataBase: new URL(siteUrl),
     title: {
-      template: "%s | NexStore AI",
+      template: "%s | NexStore",
       default: t("title"),
     },
     description: t("description"),
@@ -43,11 +43,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: siteUrl,
       title: t("title"),
       description: t("tagline"),
-      siteName: "NexStore AI",
+      siteName: "NexStore",
     },
     twitter: {
       card: "summary_large_image",
-      title: "NexStore AI",
+      title: "NexStore",
       description: t("tagline"),
     },
   };

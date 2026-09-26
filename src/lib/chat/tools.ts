@@ -132,7 +132,8 @@ async function searchProducts(input: unknown, ctx: ToolContext): Promise<ToolOut
   if (!parsed.success) return invalid('query must be 2-200 characters')
   const { query, max_price } = parsed.data
 
-  // Ranked in English, where the semantic half works; shown in the shopper's language.
+  // Ranked against the English base titles (the prompt asks for English
+  // queries, whatever the shopper writes); shown in the shopper's language.
   const search = await searchCatalogue(ctx.catalogue, query, 'en', ctx.locale)
   const hits = search.results
     .map((r) => r.product)

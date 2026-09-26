@@ -12,10 +12,8 @@
  *     PostgREST sets it (`request.jwt.claim.sub`);
  *   - `storage.buckets` / `storage.objects`, enough for the bucket and its
  *     policies to be created;
- *   - an `extensions` schema for pgvector.
  */
 import { PGlite, type Transaction } from '@electric-sql/pglite'
-import { vector } from '@electric-sql/pglite-pgvector'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
@@ -32,9 +30,6 @@ const SUPABASE_STUBS = `
   alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
   alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
   alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
-
-  create schema extensions;
-  grant usage on schema extensions to anon, authenticated, service_role;
 
   create schema auth;
   grant usage on schema auth to anon, authenticated, service_role;
@@ -68,7 +63,7 @@ const SUPABASE_STUBS = `
 
 /** A fresh database with the schema (applied twice, to prove it re-runs) and the demo catalogue. */
 export async function createDb(): Promise<PGlite> {
-  const db = await PGlite.create({ extensions: { vector } })
+  const db = await PGlite.create()
   await db.exec(SUPABASE_STUBS)
   await db.exec(schemaSql)
   await db.exec(schemaSql)

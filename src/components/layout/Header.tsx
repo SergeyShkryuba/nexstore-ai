@@ -94,7 +94,7 @@ export function Header({ categories }: { categories: NavCategory[] }) {
 
         <Link href="/" className="mr-6 flex items-center space-x-2" onClick={closeMenu}>
           <span className="font-bold inline-block text-xl">
-            NexStore <span className="text-primary">AI</span>
+            NexStore
           </span>
         </Link>
 

@@ -6,9 +6,8 @@
  * database or a running server. The route handler fetches rows and calls
  * `rankProducts`; everything below is plain data in, plain data out.
  *
- * The ranking is lexical (BM25-flavoured term weighting), not semantic. That is
- * an honest description of what it does — see README for what a real embedding
- * based search would need.
+ * The ranking is lexical (BM25-flavoured term weighting): it matches the words
+ * of the query, stemmed, weighted by where they appear.
  */
 
 export type SearchableProduct = {
@@ -89,7 +88,7 @@ export function extractMaxPrice(input: string): number | null {
 
 /**
  * The query without its budget phrase. The budget is applied as a filter; left
- * in the text, "under 60" would pull the embedding towards anything numeric.
+ * in the text, "до 100" would match "100% cotton", and "до" the start of "домом".
  */
 export function removeBudget(input: string): string {
   return BUDGET_PATTERNS.reduce((text, re) => text.replace(re, ' '), input)

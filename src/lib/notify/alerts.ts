@@ -80,7 +80,7 @@ export function oneLine(text: string, chars = 900): string {
 
 /**
  * Values for the `store_alert` template: {{1}} the headline, {{2}} the details.
- * Its body reads "NexStore AI: {{1}}. {{2}} Details in the admin panel."
+ * Its body reads "NexStore: {{1}}. {{2}} Details in the admin panel."
  */
 export function whatsappParams(alert: OwnerAlert): [string, string] {
   if (alert.kind === 'order') {

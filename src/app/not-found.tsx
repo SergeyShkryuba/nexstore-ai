@@ -14,7 +14,7 @@ export default function GlobalNotFound() {
         {/* Plain next/link: outside [locale] there is no language to add; the
             proxy sends "/" to the visitor's language. */}
         <Link href="/" className="underline underline-offset-4">
-          Back to NexStore AI
+          Back to NexStore
         </Link>
       </body>
     </html>

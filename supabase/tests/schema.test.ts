@@ -6,7 +6,7 @@
  */
 import { beforeAll, describe, expect, it } from 'vitest'
 import type { PGlite } from '@electric-sql/pglite'
-import { as, createDb, createUser } from './db'
+import { as, createDb, createUser, schemaSql } from './db'
 
 let db: PGlite
 
@@ -74,6 +74,19 @@ describe('schema.sql', () => {
        where p.slug = 'cotton-tshirt' group by p.inventory_count`,
     )
     expect(total).toBe(sizes)
+  })
+
+  it('removes what the dropped semantic search left in an existing database', async () => {
+    await db.exec(`
+      create table product_embeddings (product_id uuid primary key references products(id));
+      create function public.match_products(match_count integer) returns integer language sql as $$ select 1 $$;
+    `)
+    await db.exec(schemaSql)
+    const { n } = await one<{ n: number }>(
+      `select (select count(*) from pg_proc where proname = 'match_products')::int
+            + (select count(*) from pg_tables where tablename = 'product_embeddings')::int as n`,
+    )
+    expect(n).toBe(0)
   })
 })
 

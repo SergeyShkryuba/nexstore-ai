@@ -34,17 +34,13 @@ type SearchResponse = {
     product: SearchProduct
     score: number
     matchedTerms: string[]
-    similarity: number | null
   }>
-  strategy: 'hybrid' | 'lexical'
-  took_ms: number
 }
 
 export function SearchSection() {
   const t = useTranslations('Search')
   const locale = useLocale()
-  // Per language. In English the last two name no product: they only work
-  // because search matches meaning.
+  // Per language: a product type, a budget, and plain names.
   const examples = t.raw('examples') as string[]
   const router = useRouter()
   const [query, setQuery] = useState('')
@@ -253,25 +249,17 @@ export function SearchSection() {
             <h2 className="text-2xl font-bold">
               {response.results.length > 0 ? t('results', { count: response.results.length }) : t('noMatches')}
             </h2>
-            <p className="text-sm text-muted-foreground">
-              {/* "keyword ranking only" when the embedding service did not answer: say so rather than pretend. */}
-              {t(`strategy.${response.strategy}`)} · {response.took_ms} ms
-              {response.maxPrice !== null && ` · ${t('budget', { amount: formatPrice(response.maxPrice, locale) })}`}
-            </p>
+            {response.maxPrice !== null && (
+              <p className="text-sm text-muted-foreground">
+                {t('budget', { amount: formatPrice(response.maxPrice, locale) })}
+              </p>
+            )}
           </div>
 
           {response.results.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-              {response.results.map(({ product, matchedTerms, similarity }) => (
-                <div key={product.id} className="space-y-2">
-                  <ProductCard product={{ ...product, image_urls: product.image_urls ?? [] }} />
-                  <p className="text-xs text-muted-foreground px-1">
-                    {matchedTerms.length > 0
-                      ? t('matchedTerms', { terms: matchedTerms.join(', ') })
-                      : t('matchedByMeaning')}
-                    {similarity !== null && ` · ${t('similarity', { value: similarity.toFixed(2) })}`}
-                  </p>
-                </div>
+              {response.results.map(({ product }) => (
+                <ProductCard key={product.id} product={{ ...product, image_urls: product.image_urls ?? [] }} />
               ))}
             </div>
           ) : (

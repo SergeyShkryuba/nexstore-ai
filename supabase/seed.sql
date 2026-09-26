@@ -1,5 +1,5 @@
 -- ---------------------------------------------------------------------------
--- Demo catalogue for NexStore AI.
+-- Demo catalogue for NexStore.
 --
 -- Upsert-based, so re-running it refreshes the catalogue without deleting rows
 -- that orders already reference.
