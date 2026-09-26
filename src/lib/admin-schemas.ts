@@ -108,3 +108,41 @@ export function parseCategoryForm(formData: FormData) {
     image_url: formData.get('image_url') ?? '',
   })
 }
+
+/** The languages the catalogue is translated into; English is the row itself. */
+export const TRANSLATED_LOCALES = ['es', 'ru'] as const
+export type TranslatedLocale = (typeof TRANSLATED_LOCALES)[number]
+
+/**
+ * A translation as the admin form sends it: `es.title`, `es.description`, …
+ * An empty title means "no translation" (the page falls back to English).
+ */
+export type TranslationsInput = Record<TranslatedLocale, { title: string; description: string }>
+
+function translationSchema(limits: { title: number; description: number }) {
+  const one = z.object({
+    title: z.string().trim().max(limits.title, `Translated names are at most ${limits.title} characters`).default(''),
+    description: z
+      .string()
+      .trim()
+      .max(limits.description, `Translated descriptions are at most ${limits.description} characters`)
+      .default(''),
+  })
+  return z.object({ es: one, ru: one })
+}
+
+/** Same limits as the English fields, so a translation fits wherever the original does. */
+export const PRODUCT_TRANSLATION_LIMITS = { title: 120, description: 2000 }
+export const CATEGORY_TRANSLATION_LIMITS = { title: 60, description: 300 }
+
+export function parseTranslationsForm(formData: FormData, limits: { title: number; description: number }) {
+  const field = (name: string) => {
+    const value = formData.get(name)
+    return typeof value === 'string' ? value : ''
+  }
+  return translationSchema(limits).safeParse(
+    Object.fromEntries(
+      TRANSLATED_LOCALES.map((l) => [l, { title: field(`${l}.title`), description: field(`${l}.description`) }]),
+    ),
+  )
+}

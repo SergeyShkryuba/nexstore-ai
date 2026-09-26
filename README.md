@@ -122,7 +122,9 @@ catalogue is still prerendered with ISR — once per language.
   if Spanish or Russian lacks a key, a `{placeholder}` or a tag that English
   has. Plurals use ICU, so Russian gets its three forms.
 - *Catalogue text* is in `product_translations` / `category_translations`
-  (Spanish and Russian; English is the row itself). Queries embed a row's
+  (Spanish and Russian; English is the row itself), edited in the admin
+  forms through `save_product()` / `save_category()`, so a product and its
+  translations are saved together or not at all. Queries embed a row's
   translations and `src/lib/localized.ts` picks the visitor's, falling back to
   English field by field, so a new product appears in every language at once.
 - *Search* ranks against the visitor's language and reads budgets in all three
@@ -252,8 +254,10 @@ events — the last three are what put reserved stock back on sale:
 
 Listed rather than hidden:
 
-- The admin panel is in English, and product translations are entered in the
-  database (or `seed.sql`); the admin forms edit the English text only.
+- The admin panel itself is in English. Its product and category forms edit
+  the Spanish and Russian names and descriptions (saved in the same
+  transaction as the rest); translated specifications are set in the
+  database.
 - Supabase's own emails (confirmation, password reset) are in English.
 - A cart line keeps the title it was added with; switching language does not
   rename lines already in the cart (checkout and Stripe use the new language).

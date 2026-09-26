@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { isAllowedImageUrl, orderStatusSchema, parseCategoryForm, parseProductForm, slugify } from './admin-schemas'
+import {
+  CATEGORY_TRANSLATION_LIMITS,
+  PRODUCT_TRANSLATION_LIMITS,
+  isAllowedImageUrl,
+  orderStatusSchema,
+  parseCategoryForm,
+  parseProductForm,
+  parseTranslationsForm,
+  slugify,
+} from './admin-schemas'
 
 const SUPABASE = 'https://abc123.supabase.co'
 const STORAGE = `${SUPABASE}/storage/v1/object/public/product-images/products/1.webp`
@@ -108,5 +117,27 @@ describe('parseCategoryForm', () => {
 
   it('needs a real name', () => {
     expect(parseCategoryForm(form({ name: ' ' })).success).toBe(false)
+  })
+})
+
+describe('parseTranslationsForm', () => {
+  const form = (fields: Record<string, string>) => {
+    const data = new FormData()
+    for (const [k, v] of Object.entries(fields)) data.append(k, v)
+    return data
+  }
+
+  it('reads both languages, trimmed, with missing fields as empty', () => {
+    const parsed = parseTranslationsForm(form({ 'es.title': '  Teclado  ', 'ru.description': ' Клавиатура ' }), PRODUCT_TRANSLATION_LIMITS)
+    expect(parsed.success && parsed.data).toEqual({
+      es: { title: 'Teclado', description: '' },
+      ru: { title: '', description: 'Клавиатура' },
+    })
+  })
+
+  it('applies the same length limits as the English fields', () => {
+    const parsed = parseTranslationsForm(form({ 'ru.title': 'я'.repeat(61) }), CATEGORY_TRANSLATION_LIMITS)
+    expect(parsed.success).toBe(false)
+    expect(!parsed.success && parsed.error.issues[0]?.message).toContain('60')
   })
 })

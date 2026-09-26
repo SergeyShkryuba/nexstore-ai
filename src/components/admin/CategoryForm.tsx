@@ -9,12 +9,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createCategory, updateCategory } from '@/app/actions/admin'
 import { ImageManager } from './ImageManager'
+import { CATEGORY_TRANSLATION_LIMITS } from '@/lib/admin-schemas'
+import { TranslationFields, type TranslationRow } from './TranslationFields'
 
 export type EditableCategory = {
   id: string
   name: string
   description: string | null
   image_url: string | null
+  translations?: TranslationRow[] | null
 }
 
 /** Create when `category` is absent, edit when it is given. */
@@ -65,6 +68,12 @@ export function CategoryForm({ category }: { category?: EditableCategory }) {
           placeholder="One line, shown on the category tile and page."
         />
       </div>
+
+      <TranslationFields
+        initial={category?.translations}
+        nameLabel="Name"
+        limits={CATEGORY_TRANSLATION_LIMITS}
+      />
 
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium mb-2">Tile photo</legend>
