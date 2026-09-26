@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { LOCALES } from '@/i18n/routing'
+import { MENU_ACTIONS } from './actions'
 
 /**
  * Limits on what the widget may send. The whole conversation comes with every
@@ -23,6 +24,8 @@ const chatMessageSchema = z.object({
 
 export const chatRequestSchema = z.object({
   locale: z.enum(LOCALES).default('en'),
+  /** A menu button, in the assistant's button mode. */
+  action: z.enum(MENU_ACTIONS).optional(),
   messages: z
     .array(chatMessageSchema)
     .min(1)

@@ -507,5 +507,40 @@
     "orderHint": "¿Es sobre un pedido? Indica su número: lo encontrarás en <link>tu cuenta</link>.",
     "returnsHint": "Los plazos de entrega, las devoluciones y la garantía se explican en <link>Envíos y devoluciones</link>.",
     "replyNote": "Normalmente respondemos en un día laborable."
+  },
+  "Bot": {
+    "menu": {
+      "search": "🔍 Buscar producto",
+      "catalog": "🗂 Catálogo",
+      "orders": "📦 Mis pedidos",
+      "shipping": "🚚 Envíos y devoluciones",
+      "human": "🙋 Contactar"
+    },
+    "greeting": "¡Hola! Soy el asistente de NexStore. Elige una opción o escribe lo que buscas, por ejemplo «auriculares menos de 100».",
+    "askSearch": "Escribe lo que buscas: un nombre, un tipo de producto o un presupuesto, por ejemplo «jersey de lana» o «hogar inteligente menos de 60».",
+    "found": "Esto es lo que he encontrado:",
+    "foundBudget": "Esto es lo que he encontrado por hasta {amount}:",
+    "notFound": "No hay nada que coincida. Prueba con menos palabras o un presupuesto mayor.",
+    "ordersIntro": "Tus últimos pedidos:",
+    "shippingIntro": "Envíos, devoluciones y garantía en resumen:",
+    "humanIntro": "Déjanos tu email y tu mensaje, y el equipo te responderá por email.",
+    "catalogIntro": "Elige una categoría:",
+    "categoryEmpty": "Ahora mismo no hay nada en esta categoría.",
+    "more": "¿Algo más? Elige una opción o escribe lo que buscas.",
+    "placeholder": "Producto, tipo o presupuesto, p. ej. «auriculares menos de 100»",
+    "subtitle": "Responde al instante",
+    "disclaimer": "Asistente de la tienda: busca en el catálogo, muestra tus pedidos y te pone en contacto con el equipo.",
+    "telegram": {
+      "ordersAsk": "Envía el número de pedido y el email con el que pagaste, por ejemplo: 3f9a1c2b ana@example.com. El número está en la página del pedido y en la confirmación.",
+      "orderNotFound": "Ningún pedido coincide con ese número y ese email. Revisa ambos e inténtalo de nuevo.",
+      "orderStatus": "Pedido #{id}, realizado el {date}\nEstado: {status}\nTotal: {total} · {items}",
+      "orderBadFormat": "Necesito el número de pedido y el email, por ejemplo: 3f9a1c2b ana@example.com",
+      "contactAsk": "Escribe tu pregunta en un solo mensaje e incluye tu email, y el equipo te responderá.",
+      "contactNoEmail": "Incluye tu email en el mensaje para que el equipo pueda responderte.",
+      "contactSent": "¡Gracias! Tu mensaje ha llegado al equipo. Te responderán a {email}.",
+      "tooMany": "Demasiadas solicitudes. Espera un minuto e inténtalo de nuevo.",
+      "openSite": "🛒 Abrir la tienda",
+      "failed": "Algo ha fallado por nuestra parte. Inténtalo de nuevo en un momento."
+    }
   }
 }

@@ -93,8 +93,8 @@ export default async function LocaleLayout({
             <Header categories={categories} />
             <main id="main-content" className="flex-1">{children}</main>
             <Footer categories={categories} />
-            {/* The assistant needs a model to talk to; without the key there is no widget. */}
-            {process.env.ANTHROPIC_API_KEY && <ChatWidget />}
+            {/* With a Claude key the assistant understands free text; without one it works with buttons. */}
+            <ChatWidget ai={Boolean(process.env.ANTHROPIC_API_KEY)} />
             <Toaster />
           </ThemeProvider>
         </NextIntlClientProvider>

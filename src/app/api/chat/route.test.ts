@@ -15,6 +15,8 @@ vi.mock('@/lib/chat/agent', () => ({
   },
   runChat: (...a: unknown[]) => runChat(...a),
 }))
+const runMenu = vi.fn()
+vi.mock('@/lib/chat/menu', () => ({ runMenu: (...a: unknown[]) => runMenu(...a) }))
 
 const { POST } = await import('./route')
 const Anthropic = (await import('@anthropic-ai/sdk')).default
@@ -43,11 +45,23 @@ afterEach(() => {
 })
 
 describe('POST /api/chat', () => {
-  it('is unavailable without an API key, before counting or reading anything', async () => {
+  it('works in button mode without an API key, under the search limit', async () => {
     delete process.env.ANTHROPIC_API_KEY
-    const res = await chat(valid)
-    expect(res.status).toBe(503)
-    expect(hitLimit).not.toHaveBeenCalled()
+    runMenu.mockImplementation(async ({ emit }) => emit({ type: 'text', text: 'Esto es lo que he encontrado:' }))
+    const res = await chat({ ...valid, action: 'orders' })
+
+    expect(hitLimit.mock.calls.map((c) => c[1])).toEqual(['search'])
+    expect(runChat).not.toHaveBeenCalled()
+    expect(runMenu.mock.calls[0][0]).toMatchObject({ action: 'orders', text: 'auriculares', ctx: { locale: 'es', userId: 'user-1' } })
+    expect((await res.text()).trim().split('\n').map((l) => JSON.parse(l))).toEqual([
+      { type: 'text', text: 'Esto es lo que he encontrado:' },
+      { type: 'done' },
+    ])
+  })
+
+  it('refuses a menu action it does not know', async () => {
+    delete process.env.ANTHROPIC_API_KEY
+    expect((await chat({ ...valid, action: 'delete_everything' })).status).toBe(400)
   })
 
   it('counts both the burst and the daily limit, and refuses when either is spent', async () => {

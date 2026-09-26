@@ -38,12 +38,14 @@ TypeScript, Tailwind CSS v4 and Supabase, with Stripe Checkout for payments.
 - **Three languages** — English, Spanish and Russian: the interface, the
   catalogue (titles, descriptions, specifications, categories), Stripe's
   payment page, prices and dates, with a language switcher in the header.
-- **Shop assistant** — a chat widget on Claude (Haiku 4.5) with tools: it
-  searches the catalogue (in English against the base titles, whatever the
-  shopper's language), looks up products and the shopper's own orders,
-  answers from the shipping and returns policy, and hands over to a person
-  through a form that lands in the admin panel. Replies stream in; products and
-  orders show as cards with links. Hidden unless `ANTHROPIC_API_KEY` is set.
+- **Shop assistant, on the site and in Telegram** — works in two modes from
+  the same tools. *Button mode* (no key, no running cost): menu buttons for
+  finding a product, the shopper's orders, delivery and returns, and contacting
+  the team, with anything typed treated as a catalogue search. *AI mode* (set
+  `ANTHROPIC_API_KEY`): typed text is understood by Claude (Haiku 4.5), which
+  calls the same tools. On the site, results show as product and order cards;
+  in Telegram, as a list with link buttons, plus a catalogue by category and an
+  order's status by number and email.
 - **Contact page** — a form in three languages that files the same support
   requests as the assistant's "talk to a person", so shoppers can reach the
   team with or without the assistant.
@@ -209,6 +211,23 @@ before deploying, or the admin panel's Support page cannot load. Each message
 is rate-limited per visitor (20 per 10 minutes, 150 per day); a spend limit in
 the Anthropic console is still worth setting.
 
+### Telegram bot (optional)
+
+The bot that sends owner alerts also serves shoppers. Set
+`TELEGRAM_WEBHOOK_SECRET` (any long random string) next to `TELEGRAM_BOT_TOKEN`,
+deploy, then point the bot at the site:
+
+```bash
+npm run telegram -- webhook https://your.site   # once per site address
+npm run telegram -- info                         # where updates go, last error
+npm run telegram -- poll                         # local development, no webhook
+```
+
+The bot keeps no conversation state: questions that need an answer (an order
+number and email, a message to the team) are sent as force-replies and
+recognised by the question they answer. Order lookups need both the number and
+the email the order was paid with, and are rate-limited per chat.
+
 ### Owner alerts (optional)
 
 Each messenger is used when its variables are set and skipped otherwise.
@@ -265,6 +284,11 @@ Each messenger is used when its variables are set and skipped otherwise.
 - `src/app/api/chat/route.test.ts` / `src/app/api/support/route.test.ts` —
   both rate limits counted, errors in the shopper's language, and no model or
   database error text passed to the browser.
+- `src/lib/telegram/bot.test.ts` and `src/lib/chat/menu.test.ts` — button
+  mode on both channels: the menu in the user's language, search with budgets,
+  the catalogue by category, order status only for a matching number and email
+  and within the limit, a message to the team only with an email, and the AI
+  taking over typed text when it is configured.
 - `src/lib/notify/notify.test.ts` — alert wording (HTML escaped for Telegram,
   single-line values for WhatsApp templates), one channel failing without the
   other, no token in any log line, and the low-stock check; the Stripe webhook

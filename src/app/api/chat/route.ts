@@ -9,6 +9,7 @@ import { chatRequestSchema, modelHistory } from '@/lib/chat/request'
 import { encodeEvent, type ChatEvent } from '@/lib/chat/events'
 import { systemPrompt } from '@/lib/chat/prompt'
 import { anthropicModel, runChat, type CallModel } from '@/lib/chat/agent'
+import { runMenu } from '@/lib/chat/menu'
 
 export const runtime = 'nodejs'
 // A reply with a search or two takes a few seconds; leave headroom.
@@ -16,7 +17,7 @@ export const maxDuration = 60
 
 let client: Anthropic | undefined
 
-/** The model, or null when the key is not configured (the widget is then hidden anyway). */
+/** The model, or null when the key is not configured: the assistant then works in button mode. */
 function model(signal: AbortSignal): CallModel | null {
   if (!process.env.ANTHROPIC_API_KEY) return null
   // One retry: a shopper is waiting, and a second failure is better reported.
@@ -41,15 +42,17 @@ export async function POST(req: Request) {
   const { t } = translatorFor((body as { locale?: unknown } | null)?.locale)
 
   const callModel = model(req.signal)
-  if (!callModel) return NextResponse.json({ error: t('Chat.api.unavailable') }, { status: 503 })
 
-  // Every message is a paid model call: a short window for floods and a daily
-  // ceiling for slow, steady abuse. Both are counted, so neither can be skipped.
+  // With a model, every message is a paid call: a short window for floods and
+  // a daily ceiling for slow, steady abuse, both counted. Button mode costs a
+  // catalogue read, like the search box, and shares its limit.
   const service = createServiceClient()
   const ip = clientIp(req.headers)
-  const [burst, daily] = await Promise.all([hitLimit(service, 'chat', ip), hitLimit(service, 'chatDaily', ip)])
-  const limited = !burst.allowed ? burst : !daily.allowed ? daily : null
-  if (limited) {
+  const checks = callModel
+    ? await Promise.all([hitLimit(service, 'chat', ip), hitLimit(service, 'chatDaily', ip)])
+    : [await hitLimit(service, 'search', ip)]
+  const limited = checks.find((c) => !c.allowed) ?? null
+  if (limited && !limited.allowed) {
     return NextResponse.json(
       { error: t('Chat.api.tooMany') },
       { status: 429, headers: { 'Retry-After': String(limited.retryAfterSeconds) } },
@@ -61,7 +64,7 @@ export async function POST(req: Request) {
     const tooLong = parsed.error.issues.some((i) => i.message === 'tooLong')
     return NextResponse.json({ error: t(tooLong ? 'Chat.api.tooLong' : 'Chat.api.invalid') }, { status: 400 })
   }
-  const { locale, messages } = parsed.data
+  const { locale, messages, action } = parsed.data
 
   const account = await createClient()
   const {
@@ -73,16 +76,15 @@ export async function POST(req: Request) {
       const encoder = new TextEncoder()
       const emit = (event: ChatEvent) => controller.enqueue(encoder.encode(encodeEvent(event)))
 
+      const ctx = { catalogue: createPublicClient(), account, userId: user?.id ?? null, locale }
       try {
-        const outcome = await runChat({
-          callModel,
-          system: systemPrompt(locale),
-          history: modelHistory(messages),
-          ctx: { catalogue: createPublicClient(), account, userId: user?.id ?? null, locale },
-          emit,
-        })
-        if (outcome === 'refused') emit({ type: 'text', text: t('Chat.refused') })
-        if (outcome === 'step_limit') emit({ type: 'text', text: t('Chat.stepLimit') })
+        if (callModel) {
+          const outcome = await runChat({ callModel, system: systemPrompt(locale), history: modelHistory(messages), ctx, emit })
+          if (outcome === 'refused') emit({ type: 'text', text: t('Chat.refused') })
+          if (outcome === 'step_limit') emit({ type: 'text', text: t('Chat.stepLimit') })
+        } else {
+          await runMenu({ action, text: messages[messages.length - 1].content, ctx, emit })
+        }
         emit({ type: 'done' })
       } catch (error) {
         if (req.signal.aborted) {

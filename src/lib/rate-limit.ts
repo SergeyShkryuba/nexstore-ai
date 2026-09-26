@@ -19,6 +19,8 @@ export const LIMITS = {
   chatDaily: { limit: 150, windowSeconds: 24 * 60 * 60 },
   /** Each "talk to a person" request lands in the admin's inbox. */
   support: { limit: 5, windowSeconds: 60 * 60 },
+  /** Order status by number and email, in the Telegram bot: few, so neither can be guessed. */
+  orderLookup: { limit: 10, windowSeconds: 60 * 60 },
 } as const
 
 export type LimitScope = keyof typeof LIMITS

@@ -1,28 +1,14 @@
 import type Anthropic from '@anthropic-ai/sdk'
-import { MESSAGES } from '@/i18n/messages'
 import { LOCALE_NAMES, type Locale } from '@/i18n/routing'
-
-type Section = { heading: string; paragraphs?: readonly string[]; items?: readonly string[] }
-
-/** An info page's prose as plain text, without the page's <b>/<link> tags. */
-function pageText(sections: readonly Section[]): string {
-  const strip = (s: string) => s.replace(/<\/?(?:b|link)>/g, '')
-  return sections
-    .filter((s) => s.paragraphs || s.items)
-    .map((s) =>
-      [`${s.heading}:`, ...(s.paragraphs ?? []).map(strip), ...(s.items ?? []).map((i) => `- ${strip(i)}`)].join('\n'),
-    )
-    .join('\n\n')
-}
+import { infoPageText } from '@/lib/policies'
 
 /**
- * The store's policies, read from the same message file as the
- * /help/shipping-returns page, so the assistant cannot drift from what the
- * page promises. English: the model answers in the shopper's language anyway.
+ * The store's policies, from the same message file as the
+ * /help/shipping-returns page. English: the model answers in the shopper's
+ * language anyway.
  */
 export function storePolicies(): string {
-  const pages = MESSAGES.en.Pages
-  return [pageText(pages.shipping.sections), pageText(pages.terms.sections)].join('\n\n')
+  return [infoPageText('shipping', 'en'), infoPageText('terms', 'en')].join('\n\n')
 }
 
 const INSTRUCTIONS = `You are the shop assistant of NexStore, an online store for electronics, smart home gadgets and clothing. Prices are in euros; the store ships within the EU.

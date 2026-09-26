@@ -108,7 +108,8 @@ function sizesInStock(variants: readonly Variant[] | null | undefined): string[]
     .map((v) => v.size)
 }
 
-function card(product: Pick<SearchHit, 'id' | 'slug' | 'title' | 'price' | 'image_urls' | 'inventory_count'>): ChatProduct {
+/** A product as the widget's card shows it. */
+export function productCard(product: Pick<SearchHit, 'id' | 'slug' | 'title' | 'price' | 'image_urls' | 'inventory_count'>): ChatProduct {
   return {
     id: product.id,
     slug: product.slug,
@@ -151,7 +152,7 @@ async function searchProducts(input: unknown, ctx: ToolContext): Promise<ToolOut
         description: clip(p.description, 160),
       })),
     }),
-    event: hits.length > 0 ? { type: 'products', products: hits.map(card) } : undefined,
+    event: hits.length > 0 ? { type: 'products', products: hits.map(productCard) } : undefined,
   }
 }
 
@@ -182,7 +183,7 @@ async function getProduct(input: unknown, ctx: ToolContext): Promise<ToolOutcome
       specifications: product.attributes ?? undefined,
       description: clip(product.description, 1200),
     }),
-    event: { type: 'products', products: [card(product)] },
+    event: { type: 'products', products: [productCard(product)] },
   }
 }
 

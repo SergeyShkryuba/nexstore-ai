@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "verify": "npm run typecheck && npm run lint && npm run test && npm run build"
+    "verify": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "telegram": "node --env-file=.env.local scripts/telegram.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

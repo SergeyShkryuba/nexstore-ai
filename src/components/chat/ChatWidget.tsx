@@ -8,6 +8,7 @@ import { usePathname } from '@/i18n/navigation'
 import type { Locale } from '@/i18n/routing'
 import { cn } from '@/lib/utils'
 import { CHAT_LIMITS } from '@/lib/chat/request'
+import { MENU_ACTIONS, type MenuAction } from '@/lib/chat/actions'
 import { MessageText } from './MessageText'
 import { OrderCards, ProductCards } from './ChatCards'
 import { SupportForm } from '@/components/support/SupportForm'
@@ -17,9 +18,13 @@ import { toHistory, useChat, type UiMessage } from './useChat'
  * The shop assistant: a button in the corner that opens a chat panel. Replies
  * stream in as they are written; products and orders the assistant looks up
  * appear as cards with links. Not shown in the admin panel.
+ *
+ * `ai`: free text goes to Claude. Without it the assistant works with menu
+ * buttons, and typed text is a catalogue search.
  */
-export function ChatWidget() {
+export function ChatWidget({ ai }: { ai: boolean }) {
   const t = useTranslations('Chat')
+  const tBot = useTranslations('Bot')
   const locale = useLocale() as Locale
   const pathname = usePathname()
   const panelId = useId()
@@ -47,10 +52,10 @@ export function ChatWidget() {
     buttonRef.current?.focus()
   }
 
-  const submit = (text: string) => {
+  const submit = (text: string, action?: MenuAction) => {
     if (!text.trim() || streaming) return
     setDraft('')
-    void send(text)
+    void send(text, action)
   }
 
   const last = messages.at(-1)
@@ -74,7 +79,7 @@ export function ChatWidget() {
             </span>
             <div className="min-w-0 flex-1">
               <h2 className="text-sm font-semibold leading-tight">{t('title')}</h2>
-              <p className="text-xs text-muted-foreground">{t('subtitle')}</p>
+              <p className="text-xs text-muted-foreground">{ai ? t('subtitle') : tBot('subtitle')}</p>
             </div>
             {messages.length > 0 && (
               <Button variant="ghost" size="icon-sm" onClick={reset} title={t('newChat')}>
@@ -90,10 +95,10 @@ export function ChatWidget() {
 
           <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4 text-sm" aria-live="polite">
             <Bubble role="assistant">
-              <p>{t('greeting')}</p>
+              <p>{ai ? t('greeting') : tBot('greeting')}</p>
             </Bubble>
 
-            {messages.length === 0 && (
+            {ai && messages.length === 0 && (
               <div className="flex flex-wrap gap-2">
                 {(['suggestion1', 'suggestion2', 'suggestion3'] as const).map((key) => (
                   <button
@@ -116,6 +121,21 @@ export function ChatWidget() {
                 onNavigate={() => setOpen(false)}
               />
             ))}
+
+            {!ai && !streaming && (
+              <div className="flex flex-wrap gap-2" role="group" aria-label={tBot('more')}>
+                {MENU_ACTIONS.map((action) => (
+                  <button
+                    key={action}
+                    type="button"
+                    onClick={() => submit(tBot(`menu.${action}`), action)}
+                    className="rounded-full border px-3 py-1.5 text-xs transition-colors hover:bg-muted"
+                  >
+                    {tBot(`menu.${action}`)}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {waiting && (
               <div className="flex gap-1 px-1 py-2" role="status">
@@ -149,7 +169,7 @@ export function ChatWidget() {
                 rows={1}
                 value={draft}
                 maxLength={CHAT_LIMITS.messageChars}
-                placeholder={t('placeholder')}
+                placeholder={ai ? t('placeholder') : tBot('placeholder')}
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -164,7 +184,9 @@ export function ChatWidget() {
                 <span className="sr-only">{t('send')}</span>
               </Button>
             </div>
-            <p className="mt-2 text-[11px] leading-snug text-muted-foreground">{t('disclaimer')}</p>
+            <p className="mt-2 text-[11px] leading-snug text-muted-foreground">
+              {ai ? t('disclaimer') : tBot('disclaimer')}
+            </p>
           </form>
         </section>
       )}
