@@ -19,6 +19,12 @@ vi.mock('@supabase/supabase-js', () => ({
   }),
 }))
 
+// --- Owner alerts: only whether and what is scheduled -------------------------
+const notifyOwnerLater = vi.fn()
+vi.mock('@/lib/notify', () => ({ notifyOwnerLater: (...a: unknown[]) => notifyOwnerLater(...a) }))
+const buildOrderAlert = vi.fn()
+vi.mock('@/lib/notify/order-alert', () => ({ buildOrderAlert: (...a: unknown[]) => buildOrderAlert(...a) }))
+
 process.env.STRIPE_SECRET_KEY = 'sk_test_x'
 process.env.STRIPE_WEBHOOK_SECRET = 'whsec_x'
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://ref.supabase.co'
@@ -166,5 +172,35 @@ describe('Stripe webhook', () => {
     const res = await deliver('payment_intent.created', {})
     expect(res.status).toBe(200)
     expect(rpc).not.toHaveBeenCalled()
+  })
+})
+
+describe('owner alerts', () => {
+  it('announces a newly recorded order once, with the line names from Stripe', async () => {
+    listLineItems.mockResolvedValue({
+      data: [{ description: 'Merino Sweater', quantity: 2, amount_total: 5998, price: { product: { metadata: { product_id: 'p1' } } } }],
+    })
+    await deliver('checkout.session.completed', session())
+
+    expect(notifyOwnerLater).toHaveBeenCalledTimes(1)
+    await notifyOwnerLater.mock.calls[0][0]()
+    expect(buildOrderAlert.mock.calls[0][1]).toMatchObject({
+      id: 'order-1',
+      total: 59.98,
+      email: 'ana@example.com',
+      titles: ['Merino Sweater'],
+    })
+  })
+
+  it('stays quiet when a redelivered event finds the order already recorded', async () => {
+    rpc.mockResolvedValue({ data: null, error: null })
+    await deliver('checkout.session.completed', session())
+    expect(notifyOwnerLater).not.toHaveBeenCalled()
+  })
+
+  it('announces nothing when recording fails', async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: 'deadlock detected' } })
+    await deliver('checkout.session.completed', session())
+    expect(notifyOwnerLater).not.toHaveBeenCalled()
   })
 })

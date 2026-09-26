@@ -6,6 +6,7 @@ import { clientIp, hitLimit } from '@/lib/rate-limit'
 import { translatorFor } from '@/i18n/messages'
 import { LOCALES } from '@/i18n/routing'
 import { CHAT_LIMITS } from '@/lib/chat/request'
+import { notifyOwnerLater } from '@/lib/notify'
 
 export const runtime = 'nodejs'
 
@@ -75,5 +76,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: t('Chat.api.unavailable') }, { status: 503 })
   }
 
+  notifyOwnerLater({ kind: 'support', email, message, summary: summary || null })
   return NextResponse.json({ ok: true })
 }

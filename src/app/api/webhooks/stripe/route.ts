@@ -4,6 +4,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { orderItemsFromLineItems, shippingFromSession } from '@/lib/orders'
 import { DELAYED_PAYMENT_HOLD_DAYS, isUuidShaped, reservationIdFrom } from '@/lib/reservations'
 import { createServiceClient } from '@/utils/supabase/service'
+import { notifyOwnerLater } from '@/lib/notify'
+import { buildOrderAlert } from '@/lib/notify/order-alert'
 
 export const runtime = 'nodejs'
 
@@ -89,21 +91,33 @@ async function recordPaidSession(
     expand: ['data.price.product'],
   })
 
+  const email = session.customer_details?.email ?? null
+  const total = (session.amount_total ?? 0) / 100
+  const shipping = shippingFromSession(session)
+  const lines = orderItemsFromLineItems(lineItems.data)
+
   // Order, lines and stock in one transaction: all or nothing. A held
   // reservation becomes the sale; without one the stock is taken now.
-  const { error } = await supabase.rpc('record_paid_order', {
+  const { data: orderId, error } = await supabase.rpc('record_paid_order', {
     p_session_id: session.id,
     // Set by our checkout route; anything not shaped like an id would fail the
     // uuid cast on every retry, so it is dropped rather than passed through.
     p_user_id: isUuidShaped(session.client_reference_id) ? session.client_reference_id : null,
-    p_email: session.customer_details?.email ?? null,
-    p_total: (session.amount_total ?? 0) / 100,
-    p_shipping: shippingFromSession(session),
-    p_items: orderItemsFromLineItems(lineItems.data),
+    p_email: email,
+    p_total: total,
+    p_shipping: shipping,
+    p_items: lines,
     p_reservation_id: reservationIdFrom(session.metadata),
   })
 
   if (error) throw new Error(`record_paid_order failed: ${error.message}`)
+
+  // The id comes back only for the delivery that created the order, so a
+  // redelivered event never announces the same order twice.
+  if (typeof orderId === 'string') {
+    const titles = lineItems.data.map((item) => item.description ?? 'Item')
+    notifyOwnerLater(() => buildOrderAlert(supabase, { id: orderId, total, email, shipping, lines, titles }))
+  }
 }
 
 async function holdForDelayedPayment(supabase: SupabaseClient, session: Stripe.Checkout.Session) {
