@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { decodeEvents, type ChatEvent, type ChatOrder, type ChatProduct } from '@/lib/chat/events'
 import { CHAT_LIMITS, type ChatMessage } from '@/lib/chat/request'
+import type { MenuAction } from '@/lib/chat/actions'
 import type { Locale } from '@/i18n/routing'
 
 export type UiMessage = {
@@ -99,7 +100,8 @@ export function useChat(locale: Locale) {
   }, [])
 
   const send = useCallback(
-    async (text: string) => {
+    /** `action`: a menu button, in button mode; the text is then the button's label. */
+    async (text: string, action?: MenuAction) => {
       const content = text.trim().slice(0, CHAT_LIMITS.messageChars)
       if (!content || streaming) return
 
@@ -117,7 +119,7 @@ export function useChat(locale: Locale) {
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ locale, messages: history }),
+          body: JSON.stringify({ locale, messages: history, action }),
           signal: controller.signal,
         })
 

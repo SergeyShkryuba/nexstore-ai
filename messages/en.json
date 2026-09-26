@@ -507,5 +507,40 @@
     "orderHint": "About an order? Include its number: you will find it on <link>your account page</link>.",
     "returnsHint": "Delivery times, returns and the warranty are explained on <link>Shipping & returns</link>.",
     "replyNote": "We usually reply within one business day."
+  },
+  "Bot": {
+    "menu": {
+      "search": "🔍 Find a product",
+      "catalog": "🗂 Catalogue",
+      "orders": "📦 My orders",
+      "shipping": "🚚 Delivery & returns",
+      "human": "🙋 Contact us"
+    },
+    "greeting": "Hi! I'm the NexStore assistant. Choose an option below, or just type what you're looking for, for example “headphones under 100”.",
+    "askSearch": "Type what you're looking for: a product name, a type or a budget, for example “warm sweater” or “smart home under 60”.",
+    "found": "Here's what I found:",
+    "foundBudget": "Here's what I found for up to {amount}:",
+    "notFound": "Nothing matches that. Try fewer words or a higher budget.",
+    "ordersIntro": "Your recent orders:",
+    "shippingIntro": "Delivery, returns and warranty in short:",
+    "humanIntro": "Leave your email and message, and the team will reply by email.",
+    "catalogIntro": "Choose a category:",
+    "categoryEmpty": "Nothing in this category right now.",
+    "more": "Anything else? Choose an option or type what you're looking for.",
+    "placeholder": "Product, type or budget, e.g. “headphones under 100”",
+    "subtitle": "Answers instantly",
+    "disclaimer": "Shop assistant: searches the catalogue, shows your orders and connects you with the team.",
+    "telegram": {
+      "ordersAsk": "Send your order number and the email you paid with, for example: 3f9a1c2b ana@example.com. The number is on your order page and in the confirmation.",
+      "orderNotFound": "No order matches that number and email. Check both and try again.",
+      "orderStatus": "Order #{id}, placed {date}\nStatus: {status}\nTotal: {total} · {items}",
+      "orderBadFormat": "I need both the order number and the email, for example: 3f9a1c2b ana@example.com",
+      "contactAsk": "Write your question in one message and include your email, and the team will reply.",
+      "contactNoEmail": "Please include your email in the message, so the team can reply.",
+      "contactSent": "Thanks! Your message has reached the team. They will reply to {email}.",
+      "tooMany": "Too many requests. Please wait a minute and try again.",
+      "openSite": "🛒 Open the shop",
+      "failed": "Something went wrong on our side. Please try again in a moment."
+    }
   }
 }
