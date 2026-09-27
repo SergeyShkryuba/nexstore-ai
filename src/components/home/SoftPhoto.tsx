@@ -15,13 +15,13 @@ export function SoftPhoto({ src, children }: { src: string; children?: React.Rea
       aria-hidden="true"
       className="fade-edges absolute inset-0 -z-10 overflow-hidden [--fade:1rem] md:[--fade:2rem]"
     >
-      <Image src={src} alt="" fill sizes="100vw" className="object-cover blur-sm" />
+      <Image src={src} alt="" fill sizes="100vw" className="object-cover blur-[2px]" />
       <Image
         src={src}
         alt=""
         fill
         sizes="100vw"
-        className="fade-edges object-cover [--fade:3rem] md:[--fade:5rem]"
+        className="fade-edges object-cover [--fade:1.5rem] md:[--fade:2.5rem]"
       />
       {children}
     </div>
