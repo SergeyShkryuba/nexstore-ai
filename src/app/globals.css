@@ -117,18 +117,6 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-/*
- * Fades an element out over --fade (default 3rem) on every side instead of
- * ending on a hard edge: one gradient per axis, intersected, so the corners
- * fade too. Used for background photos (see PhotoSection).
- */
-@utility fade-edges {
-  mask-image:
-    linear-gradient(to right, transparent, #000 var(--fade, 3rem), #000 calc(100% - var(--fade, 3rem)), transparent),
-    linear-gradient(to bottom, transparent, #000 var(--fade, 3rem), #000 calc(100% - var(--fade, 3rem)), transparent);
-  mask-composite: intersect;
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
