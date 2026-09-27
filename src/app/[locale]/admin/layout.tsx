@@ -16,14 +16,9 @@ export default async function AdminLayout({
     redirect('/')
   }
 
-  // Check if user is admin
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') {
+  // is_admin(): the role column itself is not readable through the API.
+  const { data: isAdmin } = await supabase.rpc('is_admin')
+  if (isAdmin !== true) {
     redirect('/')
   }
 

@@ -1,6 +1,10 @@
 /**
  * What the store owner hears about, and how it reads in each channel.
  * Pure: plain data in, strings out, so the wording is unit-tested.
+ *
+ * Alerts travel through Telegram and Meta, so they carry as little personal
+ * data as does the job: the buyer's email is masked (the admin panel has it in
+ * full), the address is reduced to the city, and messages are shortened.
  */
 
 export type AlertLine = { title: string; quantity: number; size?: string | null }
@@ -31,6 +35,13 @@ const euro = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR'
 const lineText = (l: AlertLine) => `${l.quantity} × ${l.title}${l.size ? ` (${l.size})` : ''}`
 const stockText = (s: LowStock) => `${s.title}${s.size ? ` (${s.size})` : ''}: ${s.left === 0 ? 'sold out' : `${s.left} left`}`
 
+/** "ana.garcia@gmail.com" → "an***@gmail.com": enough to recognise, not to write to. */
+export function maskEmail(email: string): string {
+  const at = email.lastIndexOf('@')
+  if (at < 1) return '***'
+  return `${email.slice(0, Math.min(2, at))}***${email.slice(at)}`
+}
+
 function clip(text: string, chars: number): string {
   return text.length > chars ? `${text.slice(0, chars - 1)}…` : text
 }
@@ -39,7 +50,7 @@ function clip(text: string, chars: number): string {
 export function alertTitle(alert: OwnerAlert): string {
   return alert.kind === 'order'
     ? `New order #${alert.orderId.slice(0, 8)}, ${euro.format(alert.total)}`
-    : `Support request from ${alert.email}`
+    : `Support request from ${maskEmail(alert.email)}`
 }
 
 function escapeHtml(text: string): string {
@@ -53,7 +64,7 @@ export function telegramText(alert: OwnerAlert, adminUrl: string): string {
     return [
       `🛒 <b>${e(alertTitle(alert))}</b>`,
       ...alert.lines.map((l) => e(lineText(l))),
-      [alert.email, alert.place].filter(Boolean).map((s) => e(s as string)).join(' · '),
+      [alert.email && maskEmail(alert.email), alert.place].filter(Boolean).map((s) => e(s as string)).join(' · '),
       ...alert.lowStock.map((s) => `⚠️ Low stock: ${e(stockText(s))}`),
       `<a href="${e(`${adminUrl}/orders`)}">Open orders</a>`,
     ]
@@ -63,7 +74,7 @@ export function telegramText(alert: OwnerAlert, adminUrl: string): string {
   return [
     `🙋 <b>${e(alertTitle(alert))}</b>`,
     alert.summary ? `<i>${e(clip(alert.summary, 500))}</i>` : '',
-    e(clip(alert.message, 1500)),
+    e(clip(alert.message, 500)),
     `<a href="${e(`${adminUrl}/support`)}">Open support</a>`,
   ]
     .filter(Boolean)
@@ -86,13 +97,13 @@ export function whatsappParams(alert: OwnerAlert): [string, string] {
   if (alert.kind === 'order') {
     const details = [
       alert.lines.map(lineText).join('; '),
-      [alert.email, alert.place].filter(Boolean).join(', '),
+      [alert.email && maskEmail(alert.email), alert.place].filter(Boolean).join(', '),
       alert.lowStock.length ? `Low stock: ${alert.lowStock.map(stockText).join('; ')}` : '',
     ]
       .filter(Boolean)
       .join('. ')
     return [oneLine(alertTitle(alert), 120), oneLine(`${details}.`)]
   }
-  const details = [alert.summary, `Message: "${alert.message}"`].filter(Boolean).join('. ')
+  const details = [alert.summary, `Message: "${clip(alert.message, 500)}"`].filter(Boolean).join('. ')
   return [oneLine(alertTitle(alert), 120), oneLine(details)]
 }

@@ -2,6 +2,7 @@ import type Anthropic from '@anthropic-ai/sdk'
 import type { ChatEvent } from './events'
 import type { ChatMessage } from './request'
 import { CHAT_TOOLS, runTool, type ToolContext } from './tools'
+import { loggable } from '@/lib/log'
 
 /** Fast and inexpensive; the tools do the knowing, the model the talking. */
 export const CHAT_MODEL = 'claude-haiku-4-5'
@@ -89,7 +90,7 @@ export async function runChat({
         try {
           return await runTool(block.name, block.input, ctx)
         } catch (error) {
-          console.error(`Chat: tool ${block.name} failed`, error)
+          console.error(`Chat: tool ${block.name} failed`, loggable(error))
           return { content: JSON.stringify({ error: 'temporarily unavailable' }), isError: true, event: undefined }
         }
       }),

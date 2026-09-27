@@ -36,6 +36,7 @@ export async function GET(req: Request) {
   // harmless even if the route were called by someone else.
   let released: number | null = null
   let purged: number | null = null
+  let supportPurged: number | null = null
   const service = createServiceClient()
   if (service) {
     const { data, error: releaseError } = await service.rpc('release_expired_reservations')
@@ -46,7 +47,20 @@ export async function GET(req: Request) {
     const { data: purgedRows, error: purgeError } = await service.rpc('purge_rate_limits')
     if (purgeError) console.error('Keep-alive: purging rate-limit counters failed', purgeError)
     else purged = purgedRows as number
+
+    // Resolved support requests older than 180 days: their emails and messages
+    // are no longer needed (see "Data retention" in schema.sql).
+    const { data: supportRows, error: supportError } = await service.rpc('purge_support_requests')
+    if (supportError) console.error('Keep-alive: purging old support requests failed', supportError.message)
+    else supportPurged = supportRows as number
   }
 
-  return NextResponse.json({ ok: true, categories: count, released, purged, at: new Date().toISOString() })
+  return NextResponse.json({
+    ok: true,
+    categories: count,
+    released,
+    purged,
+    supportPurged,
+    at: new Date().toISOString(),
+  })
 }

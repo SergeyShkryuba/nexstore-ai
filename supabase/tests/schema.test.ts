@@ -466,3 +466,56 @@ describe('support requests', () => {
     ).rejects.toThrow('check constraint')
   })
 })
+
+describe('profiles privacy', () => {
+  it('shows a visitor the name of review authors only, and never anyone’s role', async () => {
+    const reviewer = await createUser(db, 'reviewer-privacy@example.test')
+    const quiet = await createUser(db, 'quiet-privacy@example.test')
+    await db.query(`update profiles set full_name = 'Rita Reviewer' where id = $1`, [reviewer])
+    await db.query(`update profiles set full_name = 'Quinn Quiet' where id = $1`, [quiet])
+    await db.query(`insert into reviews (product_id, user_id, rating, comment) values ($1, $2, 5, 'Great')`, [
+      await productId('smart-speaker'),
+      reviewer,
+    ])
+
+    const names = await as(db, { role: 'anon' }, async (tx) =>
+      (await tx.query<{ full_name: string }>(`select full_name from profiles where id in ($1, $2)`, [reviewer, quiet])).rows,
+    )
+    expect(names).toEqual([{ full_name: 'Rita Reviewer' }])
+
+    for (const caller of [{ role: 'anon' as const }, { role: 'authenticated' as const, userId: quiet }]) {
+      await expect(as(db, caller, (tx) => tx.query(`select role from profiles`))).rejects.toThrow('permission denied')
+      await expect(as(db, caller, (tx) => tx.query(`select created_at from profiles`))).rejects.toThrow('permission denied')
+    }
+  })
+
+  it('lets a signed-in user read their own name, and learn whether they are an admin only through is_admin()', async () => {
+    const me = await createUser(db, 'me-privacy@example.test')
+    await db.query(`update profiles set full_name = 'Me Myself' where id = $1`, [me])
+    const [own, admin] = await as(db, { role: 'authenticated', userId: me }, async (tx) => [
+      (await tx.query<{ full_name: string }>(`select full_name from profiles where id = $1`, [me])).rows,
+      (await tx.query<{ is_admin: boolean }>(`select public.is_admin() as is_admin`)).rows[0].is_admin,
+    ])
+    expect(own).toEqual([{ full_name: 'Me Myself' }])
+    expect(admin).toBe(false)
+  })
+})
+
+describe('support request retention', () => {
+  it('deletes only resolved requests older than 180 days, and only for the server', async () => {
+    await db.query(`
+      insert into support_requests (email, message, status, created_at) values
+        ('old-resolved@example.test', 'x', 'resolved', now() - interval '200 days'),
+        ('old-open@example.test', 'x', 'open', now() - interval '200 days'),
+        ('new-resolved@example.test', 'x', 'resolved', now() - interval '10 days')
+    `)
+    const { n } = await one<{ n: number }>(`select purge_support_requests() as n`)
+    expect(n).toBe(1)
+    const left = (await db.query<{ email: string }>(`select email from support_requests where email in ('old-resolved@example.test', 'old-open@example.test', 'new-resolved@example.test') order by email`)).rows
+    expect(left.map((r) => r.email)).toEqual(['new-resolved@example.test', 'old-open@example.test'])
+
+    await expect(as(db, { role: 'anon' }, (tx) => tx.query(`select purge_support_requests()`))).rejects.toThrow(
+      'permission denied',
+    )
+  })
+})

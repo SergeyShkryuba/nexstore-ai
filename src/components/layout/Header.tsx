@@ -12,6 +12,7 @@ import { AuthModal } from '../auth/AuthModal'
 import { createClient } from '@/utils/supabase/client'
 import { User as SupabaseUser } from '@supabase/supabase-js'
 import type { NavCategory } from '@/lib/nav-categories'
+import { announceSignOut } from '@/lib/session-events'
 
 /** Categories come from the locale layout, so ones added in the admin appear here. */
 export function Header({ categories }: { categories: NavCategory[] }) {
@@ -52,14 +53,10 @@ export function Header({ categories }: { categories: NavCategory[] }) {
   useEffect(() => {
     if (!userId) return
     let active = true
-    supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .single()
-      .then(({ data }) => {
-        if (active) setAdminFor(data?.role === 'admin' ? userId : null)
-      })
+    // is_admin(): the role column itself is not readable through the API.
+    supabase.rpc('is_admin').then(({ data }) => {
+      if (active) setAdminFor(data === true ? userId : null)
+    })
     return () => {
       active = false
     }
@@ -69,6 +66,7 @@ export function Header({ categories }: { categories: NavCategory[] }) {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
+    announceSignOut()
     // Re-render server components with the cleared session instead of a full
     // page reload, which threw away client state for no reason.
     router.refresh()

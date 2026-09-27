@@ -7,6 +7,7 @@ import { translatorFor } from '@/i18n/messages'
 import { LOCALES } from '@/i18n/routing'
 import { CHAT_LIMITS } from '@/lib/chat/request'
 import { notifyOwnerLater } from '@/lib/notify'
+import { loggable } from '@/lib/log'
 
 export const runtime = 'nodejs'
 
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
     locale,
   })
   if (error) {
-    console.error('Support request not saved:', error)
+    console.error('Support request not saved:', loggable(error))
     return NextResponse.json({ error: t('Chat.api.unavailable') }, { status: 503 })
   }
 

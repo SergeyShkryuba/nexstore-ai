@@ -255,7 +255,19 @@
     "roleUser": "Customer",
     "orders": "Order history",
     "noOrders": "You haven’t placed any orders yet.",
-    "orderNumber": "Order #{id}"
+    "orderNumber": "Order #{id}",
+    "deleteAccount": {
+      "title": "Delete account",
+      "intro": "Removes your login, profile, wishlist, reviews and messages to the team. Orders are kept, no longer linked to you, as the store's sales records.",
+      "button": "Delete my account",
+      "confirmTitle": "Delete your account?",
+      "confirmText": "This cannot be undone. You will be signed out, and your login, profile, wishlist, reviews and messages to the team will be deleted.",
+      "cancel": "Cancel",
+      "confirm": "Delete for good",
+      "done": "Your account has been deleted.",
+      "failed": "Your account could not be deleted. Please try again or write to us.",
+      "signedOut": "Please sign in again first."
+    }
   },
   "OrderStatus": {
     "pending": "Pending",
@@ -371,13 +383,18 @@
       "metaDescription": "What NexStore stores about you, where, and why.",
       "intro": "Short, because the store collects very little.",
       "sections": [
-        { "heading": "Demo store", "demo": true },
+        {
+          "heading": "Demo store",
+          "demo": true
+        },
         {
           "heading": "What is stored",
           "items": [
-            "<b>Your account</b> — email address and, if you give one, your name. Held by Supabase Auth.",
+            "<b>Your account</b> — email address and, if you give one, your name. Held by Supabase Auth. Your name is shown only next to reviews you write; nobody else can read your profile.",
             "<b>Your activity</b> — orders, wishlist and reviews, tied to your account in the store’s Supabase database. Row-level security means only you (and the store admin, for orders) can read them.",
             "<b>Your cart</b> — kept in your own browser’s local storage, not on a server.",
+            "<b>Messages to the team</b> — when you write to the team (the contact page, the shop assistant or the Telegram bot), your email and message are kept so the team can reply; from the assistant, also the chat so far; from Telegram, your Telegram username. Resolved requests are deleted after 180 days.",
+            "<b>The shop assistant</b> — the chat on the site is kept in your browser only for as long as the tab is open.",
             "<b>Search queries</b> — processed to find products and not saved.",
             "<b>Request counters</b> — to stop floods of checkout and search requests, the store counts requests per visitor for a few minutes. It stores a one-way keyed hash of your IP address (or account id), never the address itself, and deletes the counters within a day.",
             "<b>Error reports</b> — if the deployment has error monitoring (Sentry) turned on, a crash report records the page, browser type and the technical error. Cookies, IP addresses, email addresses, form contents and URL query strings are removed before it is sent."
@@ -385,17 +402,32 @@
         },
         {
           "heading": "Payments",
-          "paragraphs": ["Checkout happens on Stripe’s own page. Card details go straight to Stripe and never pass through this store’s servers."]
+          "paragraphs": [
+            "Checkout happens on Stripe’s own page. Card details go straight to Stripe and never pass through this store’s servers."
+          ]
+        },
+        {
+          "heading": "Services that handle your data",
+          "items": [
+            "<b>Supabase</b> — the database and sign-in.",
+            "<b>Vercel</b> — hosts the site.",
+            "<b>Stripe</b> — payments (see above).",
+            "<b>Telegram</b> — carries your messages if you use the store’s Telegram bot. The store owner is also told about new orders and messages to the team through Telegram, with your email partly hidden.",
+            "<b>Anthropic</b> — only when the shop assistant runs in AI mode: what you type in the chat is sent to Anthropic’s Claude to write the reply.",
+            "<b>Sentry</b> — error reports, if turned on (see above)."
+          ]
         },
         {
           "heading": "Cookies and tracking",
           "paragraphs": [
-            "The only cookies are the ones that keep you signed in and one that remembers the language you chose. There is no analytics, no advertising and no third-party tracking; the error reports above are the only thing that may go to a third party. Fonts are self-hosted, so loading a page does not contact Google."
+            "The only cookies are the ones that keep you signed in and one that remembers the language you chose. There is no analytics, no advertising and no third-party tracking. Fonts are self-hosted, so loading a page does not contact Google."
           ]
         },
         {
           "heading": "Deleting your data",
-          "paragraphs": ["To have your account and everything tied to it removed, open an issue on the <link>project’s GitHub</link>."]
+          "paragraphs": [
+            "Delete your account yourself on your account page: your login, profile, wishlist, reviews and messages to the team are removed at once. Orders are kept, no longer linked to you, as the store’s sales records. For anything else, write to us on the contact page."
+          ]
         }
       ]
     },

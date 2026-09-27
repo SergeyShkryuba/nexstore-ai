@@ -10,6 +10,7 @@ import { encodeEvent, type ChatEvent } from '@/lib/chat/events'
 import { systemPrompt } from '@/lib/chat/prompt'
 import { anthropicModel, runChat, type CallModel } from '@/lib/chat/agent'
 import { runMenu } from '@/lib/chat/menu'
+import { loggable } from '@/lib/log'
 
 export const runtime = 'nodejs'
 // A reply with a search or two takes a few seconds; leave headroom.
@@ -90,7 +91,7 @@ export async function POST(req: Request) {
         if (req.signal.aborted) {
           // The shopper closed the chat; nobody is listening.
         } else {
-          console.error('Chat API error:', error)
+          console.error('Chat API error:', loggable(error))
           emit({ type: 'error', code: errorCode(error) })
         }
       } finally {

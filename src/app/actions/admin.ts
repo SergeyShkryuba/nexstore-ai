@@ -14,6 +14,7 @@ import {
   type TranslationsInput,
 } from '@/lib/admin-schemas'
 import { parseVariantsField, type VariantInput } from '@/lib/variants'
+import { loggable } from '@/lib/log'
 
 type Supabase = Awaited<ReturnType<typeof createClient>>
 type ActionResult = { success: true; id?: string } | { error: string }
@@ -30,8 +31,9 @@ async function requireAdmin(): Promise<{ supabase: Supabase } | { error: string 
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Unauthorized' }
 
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') return { error: 'Forbidden' }
+  // is_admin(): the role column itself is not readable through the API.
+  const { data: isAdmin } = await supabase.rpc('is_admin')
+  if (isAdmin !== true) return { error: 'Forbidden' }
 
   return { supabase }
 }
@@ -183,7 +185,7 @@ export async function updateOrderStatus(orderId: string, status: string): Promis
     .maybeSingle()
 
   if (error) {
-    console.error('Error updating order status:', error)
+    console.error('Error updating order status:', loggable(error))
     return { error: 'Failed to update the order' }
   }
   // RLS without an admin UPDATE policy filters the row out rather than erroring.
@@ -211,7 +213,7 @@ export async function updateSupportStatus(requestId: string, status: string): Pr
     .maybeSingle()
 
   if (error) {
-    console.error('Error updating support request:', error)
+    console.error('Error updating support request:', loggable(error))
     return { error: 'Failed to update the request' }
   }
   if (!updated) return { error: 'Request not found' }

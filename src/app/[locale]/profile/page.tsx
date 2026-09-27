@@ -7,6 +7,7 @@ import { isLocale } from '@/i18n/routing'
 import { ChevronRight, Package, User } from 'lucide-react'
 import { formatDate, formatPrice } from '@/lib/format'
 import { orderStatusKey } from '@/lib/orders'
+import { DeleteAccount } from '@/components/auth/DeleteAccount'
 
 type OrderRow = {
   id: string
@@ -27,12 +28,12 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
     return redirect({ href: '/', locale })
   }
 
-  // Fetch profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
+  // The name from the profile; the role through is_admin(), since the role
+  // column is not readable through the API.
+  const [{ data: profile }, { data: isAdmin }] = await Promise.all([
+    supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
+    supabase.rpc('is_admin'),
+  ])
 
   // Fetch orders (if any)
   const { data: orders } = await supabase
@@ -65,10 +66,13 @@ export default async function ProfilePage({ params }: { params: Promise<{ locale
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">{t('role')}</p>
-                <p className="font-medium">{profile?.role === 'admin' ? t('roleAdmin') : t('roleUser')}</p>
+                <p className="font-medium">{isAdmin === true ? t('roleAdmin') : t('roleUser')}</p>
               </div>
             </CardContent>
           </Card>
+          <div className="mt-8">
+            <DeleteAccount />
+          </div>
         </div>
 
         <div className="md:col-span-2">

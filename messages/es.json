@@ -255,7 +255,19 @@
     "roleUser": "Cliente",
     "orders": "Historial de pedidos",
     "noOrders": "Todavía no has hecho ningún pedido.",
-    "orderNumber": "Pedido n.º {id}"
+    "orderNumber": "Pedido n.º {id}",
+    "deleteAccount": {
+      "title": "Eliminar la cuenta",
+      "intro": "Elimina tu acceso, tu perfil, tus favoritos, tus opiniones y tus mensajes al equipo. Los pedidos se conservan, ya sin vínculo contigo, como registro de ventas de la tienda.",
+      "button": "Eliminar mi cuenta",
+      "confirmTitle": "¿Eliminar tu cuenta?",
+      "confirmText": "No se puede deshacer. Se cerrará tu sesión y se eliminarán tu acceso, tu perfil, tus favoritos, tus opiniones y tus mensajes al equipo.",
+      "cancel": "Cancelar",
+      "confirm": "Eliminar definitivamente",
+      "done": "Tu cuenta se ha eliminado.",
+      "failed": "No se ha podido eliminar tu cuenta. Inténtalo de nuevo o escríbenos.",
+      "signedOut": "Vuelve a iniciar sesión primero."
+    }
   },
   "OrderStatus": {
     "pending": "Pendiente",
@@ -371,13 +383,18 @@
       "metaDescription": "Qué guarda NexStore sobre ti, dónde y por qué.",
       "intro": "Breve, porque la tienda recoge muy pocos datos.",
       "sections": [
-        { "heading": "Tienda de demostración", "demo": true },
+        {
+          "heading": "Tienda de demostración",
+          "demo": true
+        },
         {
           "heading": "Qué se guarda",
           "items": [
-            "<b>Tu cuenta</b>: el correo electrónico y, si lo indicas, tu nombre. Los guarda Supabase Auth.",
+            "<b>Tu cuenta</b>: el correo electrónico y, si lo indicas, tu nombre. Los guarda Supabase Auth. Tu nombre solo aparece junto a las opiniones que escribas; nadie más puede ver tu perfil.",
             "<b>Tu actividad</b>: pedidos, favoritos y opiniones, vinculados a tu cuenta en la base de datos Supabase de la tienda. La seguridad a nivel de fila hace que solo tú (y el administrador, en el caso de los pedidos) podáis verlos.",
             "<b>Tu carrito</b>: se guarda en el almacenamiento local de tu propio navegador, no en un servidor.",
+            "<b>Mensajes al equipo</b>: cuando escribes al equipo (la página de contacto, el asistente de la tienda o el bot de Telegram), se guardan tu email y tu mensaje para poder responderte; desde el asistente, también la conversación; desde Telegram, tu nombre de usuario de Telegram. Las solicitudes resueltas se eliminan a los 180 días.",
+            "<b>El asistente de la tienda</b>: la conversación del sitio se guarda en tu navegador solo mientras la pestaña está abierta.",
             "<b>Las búsquedas</b>: se procesan para encontrar productos y no se guardan.",
             "<b>Contadores de solicitudes</b>: para frenar avalanchas de pagos y búsquedas, la tienda cuenta las solicitudes de cada visitante durante unos minutos. Guarda un hash con clave, irreversible, de tu dirección IP (o del identificador de tu cuenta), nunca la dirección en sí, y borra los contadores en menos de un día.",
             "<b>Informes de errores</b>: si el despliegue tiene activada la monitorización de errores (Sentry), un informe de fallo registra la página, el tipo de navegador y el error técnico. Antes de enviarlo se eliminan las cookies, las direcciones IP y de correo, el contenido de los formularios y los parámetros de la URL."
@@ -385,17 +402,32 @@
         },
         {
           "heading": "Pagos",
-          "paragraphs": ["El pago se hace en la propia página de Stripe. Los datos de la tarjeta van directamente a Stripe y nunca pasan por los servidores de la tienda."]
+          "paragraphs": [
+            "El pago se hace en la propia página de Stripe. Los datos de la tarjeta van directamente a Stripe y nunca pasan por los servidores de la tienda."
+          ]
+        },
+        {
+          "heading": "Servicios que tratan tus datos",
+          "items": [
+            "<b>Supabase</b>: la base de datos y el inicio de sesión.",
+            "<b>Vercel</b>: aloja el sitio.",
+            "<b>Stripe</b>: los pagos (ver arriba).",
+            "<b>Telegram</b>: transmite tus mensajes si usas el bot de Telegram de la tienda. El propietario de la tienda también recibe por Telegram los avisos de pedidos nuevos y de mensajes al equipo, con tu email parcialmente oculto.",
+            "<b>Anthropic</b>: solo cuando el asistente funciona en modo IA; lo que escribes en el chat se envía a Claude, de Anthropic, para redactar la respuesta.",
+            "<b>Sentry</b>: los informes de errores, si están activados (ver arriba)."
+          ]
         },
         {
           "heading": "Cookies y seguimiento",
           "paragraphs": [
-            "Las únicas cookies son las que mantienen tu sesión iniciada y una que recuerda el idioma que has elegido. No hay analítica, ni publicidad, ni seguimiento de terceros; los informes de errores mencionados arriba son lo único que puede llegar a un tercero. Las fuentes se sirven desde la propia tienda, así que cargar una página no contacta con Google."
+            "Las únicas cookies son las que mantienen tu sesión iniciada y una que recuerda el idioma que has elegido. No hay analítica, ni publicidad, ni seguimiento de terceros. Las fuentes se sirven desde la propia tienda, así que cargar una página no contacta con Google."
           ]
         },
         {
           "heading": "Eliminar tus datos",
-          "paragraphs": ["Para que se elimine tu cuenta y todo lo vinculado a ella, abre una incidencia en el <link>GitHub del proyecto</link>."]
+          "paragraphs": [
+            "Puedes eliminar tu cuenta tú mismo desde la página de tu cuenta: tu acceso, tu perfil, tus favoritos, tus opiniones y tus mensajes al equipo se borran al momento. Los pedidos se conservan, ya sin vínculo contigo, como registro de ventas de la tienda. Para cualquier otra cosa, escríbenos desde la página de contacto."
+          ]
         }
       ]
     },

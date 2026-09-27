@@ -106,6 +106,16 @@ through its parent order, wishlists are strictly private, and admin access is
 resolved by a `SECURITY DEFINER` `is_admin()` function so the policy does not
 recurse through the `profiles` policies.
 
+**Personal data.** A user reads their own profile; anyone else sees only the
+name and picture of people who wrote a review, and nobody can read the `role`
+or signup date through the API (column grants), so the app asks `is_admin()`.
+Owner alerts leave through Telegram and Meta with the buyer's email masked and
+the address cut to the city. Errors from writes that carry personal data are
+logged by code and message only (`src/lib/log.ts`), never with the failing row.
+Resolved support requests are deleted after 180 days by the daily cron, users
+can delete their own account from their account page, and the chat is cleared
+from the tab on sign-out.
+
 **Search** (`src/lib/search.ts`, `src/lib/search-service.ts`) is keyword
 ranking: field-weighted term matching with stemming, saturating counts, a
 coverage multiplier, an exact-phrase bonus and a lift for products in a
@@ -289,6 +299,10 @@ Each messenger is used when its variables are set and skipped otherwise.
   the catalogue by category, order status only for a matching number and email
   and within the limit, a message to the team only with an email, and the AI
   taking over typed text when it is configured.
+- `src/lib/log.test.ts`, `src/app/actions/account.test.ts` and the
+  "profiles privacy" / "support request retention" tests in
+  `supabase/tests/schema.test.ts` — no failing rows in logs, account deletion
+  in order, reviewer names but no roles for visitors, and the 180-day purge.
 - `src/lib/notify/notify.test.ts` — alert wording (HTML escaped for Telegram,
   single-line values for WhatsApp templates), one channel failing without the
   other, no token in any log line, and the low-stock check; the Stripe webhook
