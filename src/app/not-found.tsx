@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import './globals.css'
+import { store } from '@/config/store'
 
 /**
  * For URLs the locale middleware never sees (it skips paths that look like
@@ -14,7 +15,7 @@ export default function GlobalNotFound() {
         {/* Plain next/link: outside [locale] there is no language to add; the
             proxy sends "/" to the visitor's language. */}
         <Link href="/" className="underline underline-offset-4">
-          Back to NexStore
+          Back to {store.name}
         </Link>
       </body>
     </html>

@@ -30,6 +30,10 @@ async function api(method, payload = {}) {
   return data.result
 }
 
+/** The store's name, as in src/config/store.ts: the texts below say "NexStore". */
+const STORE_NAME = process.env.NEXT_PUBLIC_STORE_NAME?.trim() || 'NexStore'
+const named = (text) => text.replaceAll('NexStore', STORE_NAME)
+
 const COMMANDS = {
   en: [{ command: 'menu', description: 'Show the menu' }],
   es: [{ command: 'menu', description: 'Mostrar el menú' }],
@@ -97,9 +101,9 @@ if (command === 'webhook') {
   for (const [lang, text] of Object.entries(PROFILE)) {
     // English is also the default for every other language.
     const language_code = lang === 'en' ? undefined : lang
-    await api('setMyName', { name: 'NexStore', language_code })
-    await api('setMyShortDescription', { short_description: text.short, language_code })
-    await api('setMyDescription', { description: text.description, language_code })
+    await api('setMyName', { name: STORE_NAME, language_code })
+    await api('setMyShortDescription', { short_description: named(text.short), language_code })
+    await api('setMyDescription', { description: named(text.description), language_code })
   }
   await api('setMyCommands', { commands: COMMANDS.en })
   for (const lang of ['es', 'ru']) await api('setMyCommands', { commands: COMMANDS[lang], language_code: lang })

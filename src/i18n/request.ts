@@ -1,12 +1,10 @@
 import { getRequestConfig } from 'next-intl/server'
 import { DEFAULT_LOCALE, isLocale } from './routing'
+import { MESSAGES } from './messages'
 
-/** Loads the interface strings (`messages/<locale>.json`) for each request. */
+/** The interface strings for each request, with the store's name (see src/config/store.ts). */
 export default getRequestConfig(async ({ requestLocale }) => {
   const requested = await requestLocale
   const locale = isLocale(requested) ? requested : DEFAULT_LOCALE
-  return {
-    locale,
-    messages: (await import(`../../messages/${locale}.json`)).default,
-  }
+  return { locale, messages: MESSAGES[locale] }
 })

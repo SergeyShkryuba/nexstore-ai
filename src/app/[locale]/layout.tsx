@@ -15,6 +15,7 @@ import { LOCALES, OG_LOCALE, isLocale } from "@/i18n/routing";
 import { alternates } from "@/lib/seo";
 
 import { siteUrl } from "@/lib/site";
+import { store } from "@/config/store";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -32,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // Required for relative OG/Twitter image URLs to resolve to absolute ones.
     metadataBase: new URL(siteUrl),
     title: {
-      template: "%s | NexStore",
+      template: `%s | ${store.name}`,
       default: t("title"),
     },
     description: t("description"),
@@ -43,11 +44,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: siteUrl,
       title: t("title"),
       description: t("tagline"),
-      siteName: "NexStore",
+      siteName: store.name,
     },
     twitter: {
       card: "summary_large_image",
-      title: "NexStore",
+      title: store.name,
       description: t("tagline"),
     },
   };

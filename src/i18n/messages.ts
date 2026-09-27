@@ -3,11 +3,20 @@ import en from '../../messages/en.json'
 import es from '../../messages/es.json'
 import ru from '../../messages/ru.json'
 import { DEFAULT_LOCALE, isLocale, type Locale } from './routing'
+import { storeMessages } from './store-messages'
 
 type Messages = typeof en
 
-/** All interface strings, by language. es/ru are checked against en by src/i18n/messages.test.ts. */
-export const MESSAGES: Record<Locale, Messages> = { en, es: es as Messages, ru: ru as Messages }
+/**
+ * All interface strings, by language, as this store shows them (its name, and
+ * no demo notices outside demo mode: see src/config/store.ts). es/ru are
+ * checked against en by src/i18n/messages.test.ts.
+ */
+export const MESSAGES: Record<Locale, Messages> = {
+  en: storeMessages(en),
+  es: storeMessages(es as Messages),
+  ru: storeMessages(ru as Messages),
+}
 
 /**
  * A translator for code that runs outside a rendered page — API routes, which

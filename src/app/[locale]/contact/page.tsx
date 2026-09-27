@@ -1,11 +1,12 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
-import { Mail, Package, RotateCcw } from 'lucide-react'
+import { AtSign, Mail, MessageCircle, Package, RotateCcw } from 'lucide-react'
 import { SupportForm } from '@/components/support/SupportForm'
 import { Link } from '@/i18n/navigation'
 import { isLocale } from '@/i18n/routing'
 import { alternates } from '@/lib/seo'
+import { store } from '@/config/store'
 
 type Props = { params: Promise<{ locale: string }> }
 
@@ -63,6 +64,40 @@ export default async function ContactPage({ params }: Props) {
             <Mail className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
             <p className="text-muted-foreground">{t('replyNote')}</p>
           </div>
+          {store.email && (
+            <div className="flex gap-3">
+              <AtSign className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <p className="text-muted-foreground">
+                {t.rich('emailHint', {
+                  email: store.email,
+                  link: (chunks) => (
+                    <a href={`mailto:${store.email}`} className="text-foreground underline underline-offset-4">
+                      {chunks}
+                    </a>
+                  ),
+                })}
+              </p>
+            </div>
+          )}
+          {store.telegramBot && (
+            <div className="flex gap-3">
+              <MessageCircle className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <p className="text-muted-foreground">
+                {t.rich('telegramHint', {
+                  link: (chunks) => (
+                    <a
+                      href={`https://t.me/${store.telegramBot}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-foreground underline underline-offset-4"
+                    >
+                      {chunks}
+                    </a>
+                  ),
+                })}
+              </p>
+            </div>
+          )}
         </aside>
       </div>
     </div>

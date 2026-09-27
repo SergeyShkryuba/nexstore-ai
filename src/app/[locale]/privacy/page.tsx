@@ -4,7 +4,6 @@ import { setRequestLocale } from 'next-intl/server'
 import { InfoPage, infoPageMetadata } from '@/components/layout/InfoPage'
 import { isLocale } from '@/i18n/routing'
 
-const ISSUES_URL = 'https://github.com/SergeyShkryuba/nexstore-ai/issues'
 
 type Props = { params: Promise<{ locale: string }> }
 
@@ -17,5 +16,5 @@ export default async function PrivacyPage({ params }: Props) {
   const { locale } = await params
   if (!isLocale(locale)) notFound()
   setRequestLocale(locale)
-  return <InfoPage page="privacy" locale={locale} href={ISSUES_URL} />
+  return <InfoPage page="privacy" locale={locale} />
 }

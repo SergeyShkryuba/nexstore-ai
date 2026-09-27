@@ -9,7 +9,7 @@ TypeScript, Tailwind CSS v4 and Supabase, with Stripe Checkout for payments.
 
 | | |
 |---|---|
-| **Live demo** | [nexstore-ai.vercel.app](https://nexstore-ai.vercel.app) |
+| **Live demo** | [nexstore-ai.vercel.app](https://nexstore-ai.vercel.app) · Telegram bot [@NexStoreShopNowBot](https://t.me/NexStoreShopNowBot) |
 | **Stack** | Next.js 16 · React 19 · TypeScript · Tailwind v4 · Supabase (Postgres + Auth + RLS) · Stripe · Zustand · Zod · Vitest |
 | **CI** | Typecheck, ESLint, unit tests and a production build on every push |
 
@@ -155,6 +155,14 @@ catalogue is still prerendered with ISR — once per language.
 **Fonts** are self-hosted through `@fontsource-variable/*` rather than
 `next/font/google`, so builds do not depend on reaching fonts.googleapis.com
 and no visitor request leaves for a third party.
+
+## Running it for a client
+
+`src/config/store.ts` holds the store's identity: its name (replacing
+"NexStore" in every language), demo mode (off for a real shop: no demo notices,
+no "About this project" page), contacts and social links, each overridable by an
+environment variable. [HANDOVER.md](HANDOVER.md) is the checklist for launching
+the store on a client's own accounts and handing it over.
 
 ## Getting started
 
