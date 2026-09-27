@@ -233,12 +233,23 @@ create policy "Order items follow their order"
     )
   );
 
--- Profiles: the display fields are public (reviews show an author), the row is
--- only writable by its owner.
+-- Profiles. A signed-in user reads their own; anyone reads the name and
+-- picture of people who wrote a review, because reviews show them. Nobody else's
+-- profile is listed: an earlier "viewable by everyone" policy let any visitor
+-- read every user's name, role and signup date with the public anon key.
 drop policy if exists "Users can view their own profile" on profiles;
 drop policy if exists "Profiles are viewable by everyone" on profiles;
-create policy "Profiles are viewable by everyone"
-  on profiles for select using (true);
+drop policy if exists "Users read their own profile" on profiles;
+create policy "Users read their own profile"
+  on profiles for select using (auth.uid() = id or public.is_admin());
+drop policy if exists "Review authors are public" on profiles;
+create policy "Review authors are public"
+  on profiles for select using (exists (select 1 from reviews r where r.user_id = profiles.id));
+
+-- And only the display columns, for any row a policy lets through: the role
+-- and signup date never leave the database. The app asks is_admin() instead.
+revoke select on profiles from anon, authenticated;
+grant select (id, full_name, avatar_url) on profiles to anon, authenticated;
 
 drop policy if exists "Users can update their own profile" on profiles;
 create policy "Users can update their own profile"
@@ -1121,3 +1132,25 @@ create policy "Admins read support requests"
 drop policy if exists "Admins update support requests" on support_requests;
 create policy "Admins update support requests"
   on support_requests for update using (public.is_admin()) with check (public.is_admin());
+
+-- ========================= Data retention ==================================
+-- Resolved support requests hold an email address, a message and sometimes a
+-- chat transcript; after 180 days they are no longer needed. The daily cron
+-- (/api/keepalive) calls this.
+
+create or replace function public.purge_support_requests()
+returns integer
+language sql
+security definer
+set search_path = public
+as $$
+  with gone as (
+    delete from support_requests
+    where status = 'resolved' and created_at < now() - interval '180 days'
+    returning 1
+  )
+  select count(*)::integer from gone;
+$$;
+
+revoke all on function public.purge_support_requests() from public, anon, authenticated;
+grant execute on function public.purge_support_requests() to service_role;

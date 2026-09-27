@@ -72,8 +72,10 @@ export async function updateSession(
   // content to signed-out visitors even though the layout then redirected them.
   if (path === '/admin' || path.startsWith('/admin/')) {
     if (!user) return toHome()
-    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
-    if (profile?.role !== 'admin') return toHome()
+    // is_admin() rather than reading profiles.role: the role column is not
+    // readable through the API at all (see "Profiles" in schema.sql).
+    const { data: isAdmin } = await supabase.rpc('is_admin')
+    if (isAdmin !== true) return toHome()
   }
 
   return withCookies(respond(request))

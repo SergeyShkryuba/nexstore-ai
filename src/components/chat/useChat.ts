@@ -5,6 +5,7 @@ import { decodeEvents, type ChatEvent, type ChatOrder, type ChatProduct } from '
 import { CHAT_LIMITS, type ChatMessage } from '@/lib/chat/request'
 import type { MenuAction } from '@/lib/chat/actions'
 import type { Locale } from '@/i18n/routing'
+import { SIGNED_OUT_EVENT } from '@/lib/session-events'
 
 export type UiMessage = {
   id: string
@@ -160,6 +161,12 @@ export function useChat(locale: Locale) {
     setMessages([])
     save([])
   }, [])
+
+  // A signed-out tab must not keep showing the previous user's orders.
+  useEffect(() => {
+    window.addEventListener(SIGNED_OUT_EVENT, reset)
+    return () => window.removeEventListener(SIGNED_OUT_EVENT, reset)
+  }, [reset])
 
   return { messages, streaming, send, reset }
 }

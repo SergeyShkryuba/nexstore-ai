@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('next/server', () => ({ after: vi.fn() }))
 vi.mock('@/lib/site', () => ({ siteUrl: 'https://shop.test' }))
 
-import { oneLine, telegramText, whatsappParams, type OwnerAlert } from './alerts'
+import { maskEmail, oneLine, telegramText, whatsappParams, type OwnerAlert } from './alerts'
 import { telegramConfig, whatsappConfig } from './channels'
 import { notifyOwner } from './index'
 import { lowStockAfter } from './order-alert'
@@ -45,18 +45,27 @@ describe('alert wording', () => {
     expect(text).toContain('1 × Earbuds &lt;Pro&gt;')
     expect(text).toContain('⚠️ Low stock: Merino Sweater (M): 1 left')
     expect(text).toContain('<a href="https://shop.test/admin/orders">')
+    // Messengers are third parties: the email is masked, the full one is in the admin panel.
+    expect(text).toContain('an***@example.com · Barcelona, ES')
+    expect(text).not.toContain('ana@example.com')
   })
 
   it('fills the WhatsApp template with single-line values', () => {
     const [title, details] = whatsappParams(support)
-    expect(title).toBe('Support request from ana@example.com')
+    expect(title).toBe('Support request from an***@example.com')
     expect(details).not.toMatch(/[\n\t]| {5,}/)
     expect(details).toContain('Order 3f9a1c2b arrived damaged')
 
     const [, orderDetails] = whatsappParams(order)
     expect(orderDetails).toBe(
-      '2 × Merino Sweater (M); 1 × Earbuds <Pro>. ana@example.com, Barcelona, ES. Low stock: Merino Sweater (M): 1 left.',
+      '2 × Merino Sweater (M); 1 × Earbuds <Pro>. an***@example.com, Barcelona, ES. Low stock: Merino Sweater (M): 1 left.',
     )
+  })
+
+  it('masks emails', () => {
+    expect(maskEmail('ana.garcia@gmail.com')).toBe('an***@gmail.com')
+    expect(maskEmail('a@b.c')).toBe('a***@b.c')
+    expect(maskEmail('not-an-email')).toBe('***')
   })
 
   it('clips long values', () => {

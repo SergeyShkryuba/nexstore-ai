@@ -9,16 +9,10 @@ const roleLookup = vi.fn()
 vi.mock('@supabase/ssr', () => ({
   createServerClient: () => ({
     auth: { getUser: async () => ({ data: { user } }) },
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle: async () => {
-            roleLookup()
-            return { data: role ? { role } : null }
-          },
-        }),
-      }),
-    }),
+    rpc: async (fn: string) => {
+      roleLookup(fn)
+      return { data: fn === 'is_admin' && role === 'admin', error: null }
+    },
   }),
 }))
 
