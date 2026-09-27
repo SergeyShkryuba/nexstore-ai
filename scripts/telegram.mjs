@@ -3,6 +3,7 @@
  *
  *   npm run telegram -- webhook https://your.site   point the bot at the deployed site
  *   npm run telegram -- info                         where the bot delivers updates now
+ *   npm run telegram -- profile                      set the bot's name and descriptions
  *   npm run telegram -- poll [http://localhost:3001] local dev: fetch updates and pass
  *                                                    them to the local webhook route
  *
@@ -35,6 +36,49 @@ const COMMANDS = {
   ru: [{ command: 'menu', description: 'Показать меню' }],
 }
 
+/** What a user sees in the bot's profile and before pressing Start, per language. */
+const PROFILE = {
+  en: {
+    short: 'Electronics, smart home and clothing. Search the catalogue, check an order, reach the team.',
+    description:
+      `Hi! I'm the NexStore shop assistant.
+
+🔍 Find products by name, type or budget (“smart home under 60”)
+🗂 Browse the catalogue
+📦 Check an order's status
+🚚 Delivery and returns
+🙋 Write to the team
+
+Press Start to begin.`,
+  },
+  es: {
+    short: 'Electrónica, hogar inteligente y ropa. Busca en el catálogo, consulta un pedido, contacta con el equipo.',
+    description:
+      `¡Hola! Soy el asistente de la tienda NexStore.
+
+🔍 Busca productos por nombre, tipo o presupuesto («hogar inteligente menos de 60»)
+🗂 Explora el catálogo
+📦 Consulta el estado de un pedido
+🚚 Envíos y devoluciones
+🙋 Escribe al equipo
+
+Pulsa Iniciar para empezar.`,
+  },
+  ru: {
+    short: 'Электроника, умный дом и одежда. Поиск по каталогу, статус заказа, связь с командой.',
+    description:
+      `Привет! Я помощник магазина NexStore.
+
+🔍 Найду товар по названию, типу или бюджету («умный дом до 60»)
+🗂 Покажу каталог
+📦 Подскажу статус заказа
+🚚 Расскажу о доставке и возврате
+🙋 Передам сообщение команде
+
+Нажмите «Запустить», чтобы начать.`,
+  },
+}
+
 const [command = 'info', arg] = process.argv.slice(2)
 
 if (command === 'webhook') {
@@ -49,6 +93,17 @@ if (command === 'webhook') {
   await api('setMyCommands', { commands: COMMANDS.en })
   for (const lang of ['es', 'ru']) await api('setMyCommands', { commands: COMMANDS[lang], language_code: lang })
   console.log(`Webhook set: ${url}`)
+} else if (command === 'profile') {
+  for (const [lang, text] of Object.entries(PROFILE)) {
+    // English is also the default for every other language.
+    const language_code = lang === 'en' ? undefined : lang
+    await api('setMyName', { name: 'NexStore', language_code })
+    await api('setMyShortDescription', { short_description: text.short, language_code })
+    await api('setMyDescription', { description: text.description, language_code })
+  }
+  await api('setMyCommands', { commands: COMMANDS.en })
+  for (const lang of ['es', 'ru']) await api('setMyCommands', { commands: COMMANDS[lang], language_code: lang })
+  console.log('Name, descriptions and commands set in EN/ES/RU.')
 } else if (command === 'info') {
   const me = await api('getMe')
   const info = await api('getWebhookInfo')
