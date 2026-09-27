@@ -433,7 +433,7 @@
     },
     "terms": {
       "title": "Terms of use",
-      "metaDescription": "The terms for using the NexStore demo store.",
+      "metaDescription": "The terms for using the NexStore online store.",
       "sections": [
         {
           "heading": "A demo, not a shop",
@@ -538,7 +538,9 @@
     "intro": "Questions about an order, a return or a product? Write to us and we will answer by email.",
     "orderHint": "About an order? Include its number: you will find it on <link>your account page</link>.",
     "returnsHint": "Delivery times, returns and the warranty are explained on <link>Shipping & returns</link>.",
-    "replyNote": "We usually reply within one business day."
+    "replyNote": "We usually reply within one business day.",
+    "emailHint": "Prefer email? Write to <link>{email}</link>.",
+    "telegramHint": "On Telegram? Message <link>our bot</link>: it finds products and checks orders too."
   },
   "Bot": {
     "menu": {

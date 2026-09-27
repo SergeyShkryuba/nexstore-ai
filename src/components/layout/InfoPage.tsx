@@ -70,7 +70,11 @@ export async function InfoPage({ page, locale, href }: { page: InfoPageKey; loca
         <h1 className="text-4xl font-bold tracking-tight">{c.title}</h1>
         {c.intro && <p className="mt-4 text-lg text-muted-foreground">{c.intro}</p>}
         <div className="mt-10 space-y-8 leading-relaxed [&_a]:underline [&_a]:underline-offset-4 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mb-3 [&_li]:ml-5 [&_li]:list-disc [&_p]:text-muted-foreground [&_li]:text-muted-foreground [&_ul]:space-y-2 [&_p+p]:mt-3">
-          {c.sections.map((section) => (
+          {c.sections
+            // A section built around a link ("the code is on <link>GitHub</link>")
+            // makes no sense without one: e.g. the source link of a private repository.
+            .filter((section) => href || !JSON.stringify(section).includes('<link>'))
+            .map((section) => (
             <section key={section.heading}>
               <h2>{section.heading}</h2>
               {section.demo && <p>{demoNotice}</p>}

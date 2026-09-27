@@ -13,6 +13,7 @@ import { createClient } from '@/utils/supabase/client'
 import { User as SupabaseUser } from '@supabase/supabase-js'
 import type { NavCategory } from '@/lib/nav-categories'
 import { announceSignOut } from '@/lib/session-events'
+import { store } from '@/config/store'
 
 /** Categories come from the locale layout, so ones added in the admin appear here. */
 export function Header({ categories }: { categories: NavCategory[] }) {
@@ -92,7 +93,7 @@ export function Header({ categories }: { categories: NavCategory[] }) {
 
         <Link href="/" className="mr-6 flex items-center space-x-2" onClick={closeMenu}>
           <span className="font-bold inline-block text-xl">
-            NexStore
+            {store.name}
           </span>
         </Link>
 

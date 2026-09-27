@@ -3,6 +3,7 @@ import { createPublicClient } from '@/utils/supabase/public'
 import { LOCALES, localizedPath } from '@/i18n/routing'
 
 import { siteUrl } from '@/lib/site'
+import { store } from '@/config/store'
 
 export const revalidate = 3600
 
@@ -25,7 +26,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticEntries: MetadataRoute.Sitemap = [
     ...everyLanguage('/', { changeFrequency: 'daily', priority: 1 }),
     ...everyLanguage('/categories/all', { changeFrequency: 'daily', priority: 0.8 }),
-    ...['/about', '/contact', '/help/shipping-returns', '/privacy', '/terms'].flatMap((path) =>
+    ...[...(store.demo ? ['/about'] : []), '/contact', '/help/shipping-returns', '/privacy', '/terms'].flatMap((path) =>
       everyLanguage(path, { changeFrequency: 'yearly', priority: 0.3 }),
     ),
   ]

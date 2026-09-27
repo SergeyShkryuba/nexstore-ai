@@ -433,7 +433,7 @@
     },
     "terms": {
       "title": "Condiciones de uso",
-      "metaDescription": "Las condiciones de uso de la tienda de demostración NexStore.",
+      "metaDescription": "Las condiciones de uso de la tienda online NexStore.",
       "sections": [
         {
           "heading": "Una demo, no una tienda",
@@ -538,7 +538,9 @@
     "intro": "¿Dudas sobre un pedido, una devolución o un producto? Escríbenos y te responderemos por email.",
     "orderHint": "¿Es sobre un pedido? Indica su número: lo encontrarás en <link>tu cuenta</link>.",
     "returnsHint": "Los plazos de entrega, las devoluciones y la garantía se explican en <link>Envíos y devoluciones</link>.",
-    "replyNote": "Normalmente respondemos en un día laborable."
+    "replyNote": "Normalmente respondemos en un día laborable.",
+    "emailHint": "¿Prefieres el email? Escribe a <link>{email}</link>.",
+    "telegramHint": "¿Usas Telegram? Escribe a <link>nuestro bot</link>: también busca productos y consulta pedidos."
   },
   "Bot": {
     "menu": {
